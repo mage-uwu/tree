@@ -20,11 +20,17 @@
 
 // ------------------------------------------------------------------ config
 static std::atomic<long long> g_sel_n{0}, g_sel_calls{0};
-static void print_stats() { if (g_sel_calls) fprintf(stderr, "tree-bitnet: mean selected neurons %.1f over %lld calls\n", (double)g_sel_n / g_sel_calls, (long long)g_sel_calls); }
+static std::atomic<long long> g_att_sel{0}, g_att_tot{0};
+static void print_stats() {
+    if (g_att_tot) fprintf(stderr, "tree-bitnet: attention read %.1f%% of keys/values\n", 100.0 * (double)g_att_sel / (double)g_att_tot);
+    if (g_sel_calls) fprintf(stderr, "tree-bitnet: mean selected neurons %.1f over %lld calls\n", (double)g_sel_n / g_sel_calls, (long long)g_sel_calls); }
 
 struct TreeCfg {
     float mlp_frac = 0; int mlp_k = 0; bool all = false;
-    int part_m = 0, part_C = 0;          // TREE_MLP_PARTIAL=m:C  outlier partial-sum candidate selection
+    int part_m = 0, part_C = 0;
+    bool attn = false; float tau = 8.f; int recent = 64;
+    int aL = 0, aH = 0, aS = 0, aD = 0, ahd = 0;
+    std::vector<float> aw, ab, ac;       // [L][H][S][2^D-1][hd], [L][H][S][2^D-1], [L][H][S][2^D][hd]          // TREE_MLP_PARTIAL=m:C  outlier partial-sum candidate selection
     int head_N = 8192; bool head = false;
     int V = 0, d = 0, S = 0, NB = 0;
     std::vector<float> leaves;          // [S][16][d]
@@ -50,6 +56,24 @@ static TreeCfg & cfg() {
                 fread(c.codes.data(), 1, c.codes.size(), f) != c.codes.size()) { fprintf(stderr, "tree-bitnet: short read %s\n", p); exit(1); }
             fclose(f); c.head = true;
             fprintf(stderr, "tree-bitnet: tree head V=%d d=%d S=%d N=%d\n", c.V, c.d, c.S, c.head_N);
+        }
+        if (const char * s = getenv("TREE_TAU"))      c.tau = (float)atof(s);
+        if (const char * s = getenv("TREE_RECENT"))   c.recent = atoi(s);
+        if (const char * p = getenv("TREE_ATTN")) {
+            FILE * f = fopen(p, "rb"); char magic[4]; int32_t h[6];
+            if (!f || fread(magic, 1, 4, f) != 4 || memcmp(magic, "TKEY", 4) || fread(h, 4, 6, f) != 6) { fprintf(stderr, "tree-bitnet: cannot read %s\n", p); exit(1); }
+            c.aL = h[1]; c.aH = h[2]; c.aS = h[3]; c.aD = h[4]; c.ahd = h[5];
+            const int NI = (1 << c.aD) - 1, NL = 1 << c.aD;
+            c.aw.resize((size_t)c.aL * c.aH * c.aS * NI * c.ahd); c.ab.resize((size_t)c.aL * c.aH * c.aS * NI); c.ac.resize((size_t)c.aL * c.aH * c.aS * NL * c.ahd);
+            for (int l = 0; l < c.aL; l++) for (int hh = 0; hh < c.aH; hh++) {
+                size_t o = (size_t)l * c.aH + hh;
+                bool ok = fread(c.aw.data() + o * c.aS * NI * c.ahd, 4, (size_t)c.aS * NI * c.ahd, f) == (size_t)c.aS * NI * c.ahd;
+                ok = ok && fread(c.ab.data() + o * c.aS * NI, 4, (size_t)c.aS * NI, f) == (size_t)c.aS * NI;
+                ok = ok && fread(c.ac.data() + o * c.aS * NL * c.ahd, 4, (size_t)c.aS * NL * c.ahd, f) == (size_t)c.aS * NL * c.ahd;
+                if (!ok) { fprintf(stderr, "tree-bitnet: short read %s\n", p); exit(1); }
+            }
+            fclose(f); c.attn = true;
+            fprintf(stderr, "tree-bitnet: tree attention L=%d H=%d S=%d D=%d tau=%.1f recent=%d\n", c.aL, c.aH, c.aS, c.aD, c.tau, c.recent);
         }
         if (getenv("TREE_STATS")) atexit(print_stats);
         if (c.mlp_frac > 0 || c.mlp_k > 0) fprintf(stderr, "tree-bitnet: sparse MLP frac=%.3f k=%d\n", c.mlp_frac, c.mlp_k);
@@ -450,6 +474,182 @@ ggml_tensor * tree_bitnet_head(ggml_context * ctx, ggml_tensor * h, ggml_tensor 
     ggml_tensor * sc = ggml_custom_4d(ctx, GGML_TYPE_F32, (int64_t)c.NB * 32, h->ne[1], 1, 1, a1, 1, op_scan, GGML_N_TASKS_MAX, nullptr);
     ggml_tensor * a2[3] = {sc, h, tok_embd};
     return ggml_custom_4d(ctx, GGML_TYPE_F32, c.V, h->ne[1], 1, 1, a2, 3, op_head, GGML_N_TASKS_MAX, nullptr);
+}
+
+
+// ------------------------------------------------------------------ select+rescore attention
+struct AttnLayer { std::vector<uint8_t> codes[16]; int64_t cap = 0; };   // per kv head: [block][S/2][32] nibble codes
+static AttnLayer g_attn[256];
+
+bool tree_bitnet_attn_enabled(int n_tokens) { const TreeCfg & c = cfg(); return c.attn && (n_tokens == 1 || c.all); }
+
+static inline float dotf(const float * a, const float * b, int n) {
+    __m256 s0 = _mm256_setzero_ps(), s1 = _mm256_setzero_ps();
+    for (int i = 0; i < n; i += 16) { s0 = _mm256_fmadd_ps(_mm256_loadu_ps(a + i), _mm256_loadu_ps(b + i), s0); s1 = _mm256_fmadd_ps(_mm256_loadu_ps(a + i + 8), _mm256_loadu_ps(b + i + 8), s1); }
+    s0 = _mm256_add_ps(s0, s1);
+    __m128 q = _mm_add_ps(_mm256_castps256_ps128(s0), _mm256_extractf128_ps(s0, 1)); q = _mm_hadd_ps(q, q); q = _mm_hadd_ps(q, q);
+    return _mm_cvtss_f32(q);
+}
+static inline float doth(const float * a, const ggml_fp16_t * b, int n) {
+    __m256 s0 = _mm256_setzero_ps(), s1 = _mm256_setzero_ps();
+    for (int i = 0; i < n; i += 16) {
+        s0 = _mm256_fmadd_ps(_mm256_loadu_ps(a + i), _mm256_cvtph_ps(_mm_loadu_si128((const __m128i *)(b + i))), s0);
+        s1 = _mm256_fmadd_ps(_mm256_loadu_ps(a + i + 8), _mm256_cvtph_ps(_mm_loadu_si128((const __m128i *)(b + i + 8))), s1);
+    }
+    s0 = _mm256_add_ps(s0, s1);
+    __m128 q = _mm_add_ps(_mm256_castps256_ps128(s0), _mm256_extractf128_ps(s0, 1)); q = _mm_hadd_ps(q, q); q = _mm_hadd_ps(q, q);
+    return _mm_cvtss_f32(q);
+}
+
+// args: k_cur [hd, H, T] f32, k_idxs [T] i64
+static void op_kenc(ggml_tensor * dst, int ith, int nth, void * ud) {
+    const TreeCfg & c = cfg(); const int il = (int)(intptr_t)ud; AttnLayer & A = g_attn[il];
+    const ggml_tensor * k = dst->src[0], * idx = dst->src[1];
+    const int hd = (int)k->ne[0], H = (int)k->ne[1], T = (int)k->ne[2], S = c.aS, P = S / 2, D = c.aD, NI = (1 << D) - 1, NL = 1 << D;
+    std::vector<float> r(hd);
+    int a, b; part(T * H, ith, nth, a, b);
+    for (int it = a; it < b; it++) {
+        const int t = it / H, h = it % H;
+        const float * kv = (const float *)((const char *)k->data + t * k->nb[2] + h * k->nb[1]);
+        const int64_t cell = ((const int64_t *)idx->data)[t];
+        if (cell >= A.cap) continue;
+        memcpy(r.data(), kv, hd * sizeof(float));
+        const float tiny = 1e-5f * sqrtf(dotf(kv, kv, hd));
+        const size_t o = (size_t)il * c.aH + h;
+        uint8_t * cb = A.codes[h].data() + (size_t)(cell / 32) * P * 32 + (cell % 32);
+        for (int s = 0; s < S; s++) {
+            const float * w = c.aw.data() + ((o * S + s) * NI) * hd; const float * bb = c.ab.data() + (o * S + s) * NI;
+            int node = 0;
+            for (int dd = 0; dd < D; dd++) node = 2 * node + 1 + (dotf(w + (size_t)node * hd, r.data(), hd) - bb[node] > 0 ? 1 : 0);
+            const int leaf = node - NI;
+            const float * cv = c.ac.data() + ((o * S + s) * NL + leaf) * hd;
+            for (int i = 0; i < hd; i++) r[i] -= cv[i];
+            if (sqrtf(dotf(r.data(), r.data(), hd)) < tiny) std::fill(r.begin(), r.end(), 0.f);
+            uint8_t & byte = cb[(s / 2) * 32];
+            byte = (s & 1) ? (uint8_t)((byte & 0x0F) | (leaf << 4)) : (uint8_t)((byte & 0xF0) | leaf);
+        }
+    }
+}
+
+ggml_tensor * tree_bitnet_kenc(ggml_context * ctx, ggml_tensor * k_cur, ggml_tensor * k_idxs, int64_t kv_size, int il) {
+    const TreeCfg & c = cfg(); AttnLayer & A = g_attn[il];
+    if (A.cap < kv_size) {                                               // graph build is single-threaded
+        const int P = c.aS / 2; const int64_t nb = (kv_size + 31) / 32;
+        for (int h = 0; h < c.aH; h++) A.codes[h].assign((size_t)nb * P * 32, 0);
+        A.cap = nb * 32;
+    }
+    ggml_tensor * args[2] = {k_cur, k_idxs};
+    return ggml_custom_4d(ctx, GGML_TYPE_F32, 1, 1, 1, 1, args, 2, op_kenc, GGML_N_TASKS_MAX, (void *)(intptr_t)il);
+}
+
+struct AttnParams { float scale; int il; };
+static AttnParams g_attn_par[256];
+
+// args: q [hd, Hq, T] f32, k view [hd, H, n_kv] f16, v view, kq_mask [n_kv, >=T], deps...
+static void op_tattn(ggml_tensor * dst, int ith, int nth, void * ud) {
+    const TreeCfg & c = cfg(); const AttnParams & ap = *(const AttnParams *)ud; const int il = ap.il; AttnLayer & A = g_attn[il];
+    const ggml_tensor * q = dst->src[0], * K = dst->src[1], * Vt = dst->src[2], * M = dst->src[3];
+    const int hd = (int)q->ne[0], Hq = (int)q->ne[1], T = (int)q->ne[2], H = (int)K->ne[1], G = Hq / H;
+    const int n_kv = (int)K->ne[2], S = c.aS, P = S / 2, NL = 1 << c.aD;
+    const bool vtrans = Vt->ne[0] != hd;                                    // transposed V cache: [n_kv, H, hd]
+    std::vector<float> qs(hd), tab(S * NL), approx(((n_kv + 31) / 32) * 32), sc(n_kv), acc(hd);
+    std::vector<int> sel(n_kv); std::vector<uint8_t> tlo(S * NL), thi(S * NL);
+    long long nsel = 0, ntot = 0;
+    int a, b; part(T * Hq, ith, nth, a, b);
+    for (int it = a; it < b; it++) {
+        const int t = it / Hq, hq = it % Hq, h = hq / G;
+        const float * qv = (const float *)((const char *)q->data + t * q->nb[2] + hq * q->nb[1]);
+        for (int i = 0; i < hd; i++) qs[i] = qv[i] * ap.scale;
+        // valid cells from the stock mask (0 = attend, -inf = masked)
+        auto valid = [&](int j) -> bool {
+            const char * row = (const char *)M->data + (size_t)t * M->nb[1];
+            float m = M->type == GGML_TYPE_F16 ? ggml_fp16_to_fp32(((const ggml_fp16_t *)row)[j]) : ((const float *)row)[j];
+            return m > -1e30f;
+        };
+        int last = -1; for (int j = n_kv - 1; j >= 0; j--) if (valid(j)) { last = j; break; }
+        if (last < 0) { std::fill((float *)((char *)dst->data + t * dst->nb[1]) + hq * hd, (float *)((char *)dst->data + t * dst->nb[1]) + (hq + 1) * hd, 0.f); continue; }
+        const int n = last + 1;
+        // leaf tables (scaled query . leaf vectors) and 16-bit two-plane quantization with a shared step
+        const size_t o = (size_t)il * c.aH + h;
+        double off = 0; float rmax = 1e-12f;
+        for (int s = 0; s < S; s++) {
+            float lo = 1e30f, hi = -1e30f;
+            for (int l = 0; l < NL; l++) { float v = dotf(qs.data(), c.ac.data() + ((o * S + s) * NL + l) * hd, hd); tab[s * NL + l] = v; lo = std::min(lo, v); hi = std::max(hi, v); }
+            off += lo; rmax = std::max(rmax, hi - lo);
+            for (int l = 0; l < NL; l++) tab[s * NL + l] -= lo;
+        }
+        const float step = rmax / 65535.f;
+        for (int e = 0; e < S * NL; e++) { int qq = (int)lrintf(tab[e] / step); qq = qq > 65535 ? 65535 : qq; tlo[e] = (uint8_t)(qq & 255); thi[e] = (uint8_t)(qq >> 8); }
+        // fast-scan approximate scores for cells [0, n)
+        const __m256i m4 = _mm256_set1_epi8(15), m8 = _mm256_set1_epi16(255);
+        const int nblk = (n + 31) / 32;
+        float amax = -1e30f;
+        for (int bk = 0; bk < nblk; bk++) {
+            __m256i l0 = _mm256_setzero_si256(), l1 = l0, h0 = l0, h1 = l0;
+            const uint8_t * cb = A.codes[h].data() + (size_t)bk * P * 32;
+            for (int p = 0; p < P; p++) {
+                __m256i cc = _mm256_loadu_si256((const __m256i *)(cb + p * 32));
+                __m256i i0 = _mm256_and_si256(cc, m4), i1 = _mm256_and_si256(_mm256_srli_epi16(cc, 4), m4);
+                __m256i L0 = _mm256_broadcastsi128_si256(_mm_loadu_si128((const __m128i *)(tlo.data() + 32 * p)));
+                __m256i L1 = _mm256_broadcastsi128_si256(_mm_loadu_si128((const __m128i *)(tlo.data() + 32 * p + 16)));
+                __m256i H0 = _mm256_broadcastsi128_si256(_mm_loadu_si128((const __m128i *)(thi.data() + 32 * p)));
+                __m256i H1 = _mm256_broadcastsi128_si256(_mm_loadu_si128((const __m128i *)(thi.data() + 32 * p + 16)));
+                __m256i lo = _mm256_shuffle_epi8(L0, i0), lo2 = _mm256_shuffle_epi8(L1, i1), hi = _mm256_shuffle_epi8(H0, i0), hi2 = _mm256_shuffle_epi8(H1, i1);
+                l0 = _mm256_add_epi16(l0, _mm256_add_epi16(_mm256_and_si256(lo, m8), _mm256_and_si256(lo2, m8)));
+                l1 = _mm256_add_epi16(l1, _mm256_add_epi16(_mm256_srli_epi16(lo, 8), _mm256_srli_epi16(lo2, 8)));
+                h0 = _mm256_add_epi16(h0, _mm256_add_epi16(_mm256_and_si256(hi, m8), _mm256_and_si256(hi2, m8)));
+                h1 = _mm256_add_epi16(h1, _mm256_add_epi16(_mm256_srli_epi16(hi, 8), _mm256_srli_epi16(hi2, 8)));
+            }
+            alignas(32) uint16_t Lw[32], Hw[32];
+            _mm256_store_si256((__m256i *)Lw, l0); _mm256_store_si256((__m256i *)(Lw + 16), l1);
+            _mm256_store_si256((__m256i *)Hw, h0); _mm256_store_si256((__m256i *)(Hw + 16), h1);
+            for (int kk = 0; kk < 32; kk++) {
+                const int j = bk * 32 + (kk < 16 ? 2 * kk : 2 * (kk - 16) + 1);
+                float v = (float)(off + (double)step * (256.0 * Hw[kk] + Lw[kk]));
+                approx[j] = v;
+                if (j < n && v > amax && valid(j)) amax = v;
+            }
+        }
+        // select: within tau of the best tree score, plus the first cell and the newest `recent` cells
+        int ns = 0;
+        for (int j = 0; j < n; j++) {
+            if (!valid(j)) continue;
+            if (j == 0 || j >= n - c.recent || approx[j] > amax - c.tau) sel[ns++] = j;
+        }
+        // exact scores, softmax, values
+        float mx = -1e30f;
+        for (int s2 = 0; s2 < ns; s2++) {
+            const int j = sel[s2];
+            if (s2 + 4 < ns) _mm_prefetch((const char *)K->data + (size_t)sel[s2 + 4] * K->nb[2] + h * K->nb[1], _MM_HINT_T0);
+            sc[s2] = doth(qs.data(), (const ggml_fp16_t *)((const char *)K->data + (size_t)j * K->nb[2] + h * K->nb[1]), hd);
+            mx = std::max(mx, sc[s2]);
+        }
+        float sum = 0; std::fill(acc.begin(), acc.end(), 0.f);
+        for (int s2 = 0; s2 < ns; s2++) {
+            const float w = expf(sc[s2] - mx); sum += w; const int j = sel[s2];
+            if (!vtrans) {
+                const ggml_fp16_t * vv = (const ggml_fp16_t *)((const char *)Vt->data + (size_t)j * Vt->nb[2] + h * Vt->nb[1]);
+                const __m256 wv = _mm256_set1_ps(w);
+                for (int i = 0; i < hd; i += 8) _mm256_storeu_ps(acc.data() + i, _mm256_fmadd_ps(wv, _mm256_cvtph_ps(_mm_loadu_si128((const __m128i *)(vv + i))), _mm256_loadu_ps(acc.data() + i)));
+            } else {
+                for (int i = 0; i < hd; i++) acc[i] += w * ggml_fp16_to_fp32(*(const ggml_fp16_t *)((const char *)Vt->data + (size_t)j * Vt->nb[0] + h * Vt->nb[1] + (size_t)i * Vt->nb[2]));
+            }
+        }
+        float * out = (float *)((char *)dst->data + t * dst->nb[1]) + hq * hd;
+        const float inv = sum > 0 ? 1.f / sum : 0.f;
+        for (int i = 0; i < hd; i++) out[i] = acc[i] * inv;
+        nsel += ns; ntot += n;
+    }
+    g_att_sel += nsel; g_att_tot += ntot;
+}
+
+ggml_tensor * tree_bitnet_attn(ggml_context * ctx, ggml_tensor * q_cur, ggml_tensor * k, ggml_tensor * v,
+                               ggml_tensor * kq_mask, ggml_tensor ** deps, int n_deps, float kq_scale, int il) {
+    if (k->type != GGML_TYPE_F16 || v->type != GGML_TYPE_F16) { fprintf(stderr, "tree-bitnet: tree attention needs an f16 KV cache\n"); exit(1); }
+    g_attn_par[il] = {kq_scale, il};
+    ggml_tensor * args[12] = {q_cur, k, v, kq_mask};
+    for (int i = 0; i < n_deps && i < 8; i++) args[4 + i] = deps[i];
+    return ggml_custom_4d(ctx, GGML_TYPE_F32, q_cur->ne[0] * q_cur->ne[1], q_cur->ne[2], 1, 1, args, 4 + n_deps, op_tattn, GGML_N_TASKS_MAX, &g_attn_par[il]);
 }
 
 #if defined(__clang__)

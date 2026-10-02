@@ -11,16 +11,51 @@ index 6448a8427..68de692eb 100644
              llama-arch.cpp
              llama-batch.cpp
 diff --git a/src/models/bitnet.cpp b/src/models/bitnet.cpp
-index 985c8d6fc..384686fcd 100644
+index 985c8d6fc..702dd29c4 100644
 --- a/src/models/bitnet.cpp
 +++ b/src/models/bitnet.cpp
-@@ -1,4 +1,5 @@
+@@ -1,4 +1,6 @@
  #include "models.h"
 +#include "../tree-bitnet.h"
++#include "../llama-kv-cache.h"
  
  void llama_model_bitnet::load_arch_hparams(llama_model_loader & ml) {
      ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS, hparams.f_norm_rms_eps);
-@@ -125,12 +126,20 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
+@@ -95,9 +97,33 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
+             cb(Kcur, "Kcur", il);
+             cb(Vcur, "Vcur", il);
+ 
++            if (arch == LLM_ARCH_BITNET_B158 && tree_bitnet_attn_enabled(1)) {
++                // tree attention configured: keep the key codes up to date for every batch (prompt included)
++                ggml_tensor * kview = inp_attn->mctx->get_k(ctx0, il);
++                ggml_tensor * enc = tree_bitnet_kenc(ctx0, Kcur, inp_attn->get_k_idxs(), kview->view_src->ne[1], il);
++                ggml_build_forward_expand(gf, enc);
++                if (tree_bitnet_attn_enabled((int) Kcur->ne[2]) && !inp_attn->self_k_rot && !inp_attn->self_v_rot) {
++                    ggml_build_forward_expand(gf, Qcur);
++                    ggml_build_forward_expand(gf, Vcur);
++                    ggml_build_forward_expand(gf, Kcur);
++                    ggml_tensor * kst = inp_attn->mctx->cpy_k(ctx0, Kcur, inp_attn->get_k_idxs(), il);
++                    ggml_tensor * vst = inp_attn->mctx->cpy_v(ctx0, Vcur, inp_attn->get_v_idxs(), il);
++                    ggml_build_forward_expand(gf, kst);
++                    ggml_build_forward_expand(gf, vst);
++                    ggml_tensor * deps[3] = {enc, kst, vst};
++                    cur = tree_bitnet_attn(ctx0, Qcur, inp_attn->mctx->get_k(ctx0, il), inp_attn->mctx->get_v(ctx0, il),
++                                           inp_attn->get_kq_mask(), deps, 3, 1.0f/sqrtf(float(n_embd_head)), il);
++                    cb(cur, "kqv_out", il);
++                } else {
++                    cur = build_attn(inp_attn,
++                        NULL, NULL, NULL,
++                        Qcur, Kcur, Vcur, nullptr, nullptr, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
++                }
++            } else {
+             cur = build_attn(inp_attn,
+                     NULL, NULL, NULL,
+                     Qcur, Kcur, Vcur, nullptr, nullptr, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
++            }
+ 
+             cur = build_norm(cur,
+                     model.layers[il].attn_sub_norm, NULL,
+@@ -125,12 +151,20 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
                  LLM_NORM_RMS, il);
          cb(cur, "ffn_norm", il);
  
@@ -42,7 +77,7 @@ index 985c8d6fc..384686fcd 100644
          cb(cur, "ffn_sub_out", il);
  
          cur = build_norm(cur,
-@@ -140,6 +149,7 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
+@@ -140,6 +174,7 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
  
          cur = build_lora_mm(model.layers[il].ffn_down, cur, model.layers[il].ffn_down_s);
          cb(cur, "ffn_down", il);
@@ -50,7 +85,7 @@ index 985c8d6fc..384686fcd 100644
  
          cur = ggml_add(ctx0, cur, ffn_inp);
          cb(cur, "l_out", il);
-@@ -162,7 +172,8 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
+@@ -162,7 +197,8 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
  
      // lm_head
      // FIXME: do not use model.tok_embd directly, duplicate as model.output
