@@ -167,8 +167,14 @@ with all neurons: KL **0.000** (bit-exact). wiki KL:
   k=1024 → 0.0030 at 2.3×. Skipping only the neurons with gate ≤ 0 is lossless (41% of up/down work).
 
 ## Engine baseline — stock bitnet.cpp on this machine
+**Bug found: stock bitnet.cpp HEAD (0b341e5, llama.cpp submodule isHuangXin/release-bitnet-embedding-0.6b-270m)
+runs BitNet-b1.58-2B-4T with SiLU instead of relu² in the FFN** (`src/models/bitnet.cpp` passes `LLM_FFN_SILU`
+for every bitnet arch). WikiText-2 test, `llama-perplexity -c 2048 --chunks 6`: **PPL 91.2 stock → 13.14 with
+the one-line fix** (`engine/bitnet_relu2_fix.patch`). All speed numbers below use the fixed build (the activation
+costs the same either way: 6.72 → 6.50 tok/s at 1 thread is noise).
 Intel Xeon (Sapphire Rapids class, AVX-512 VNNI), 4 vCPU. Official `BitNet-b1.58-2B-4T` I2_S gguf.
-`llama-bench -p 0 -n 64`: **6.72 tok/s (1 thread), 21.6 tok/s (4 threads)**.
+`llama-bench -p 0 -n 64` (fixed build): **6.50 tok/s (1 thread), 21.4 tok/s (4 threads)**; with context depth
+(4 threads): 16.2 tok/s @ 2048, **7.9 tok/s @ 8192** → at 8k, attention is ~80 of 126 ms/token (~63%).
 
 Bytes per decoded token: ternary layers ≈ 0.52 GB (MLP ≈ 0.40 GB), **tied output layer 0.66 GB (f16,
 128256 × 2560)**. Timed in ggml (`engine/headbench.c`): output layer f16 = **60.6 ms of 149 ms/token on 1 thread
