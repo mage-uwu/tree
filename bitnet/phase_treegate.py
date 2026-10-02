@@ -68,15 +68,15 @@ def fit_trees(l, S):
     return kt.encode(W[None])[0][0], W                           # W_hat (F,d), W
 
 
-def tree_mlp(mlp, What, Cn, frac, m=0):
+def tree_mlp(mlp, What, Cn, frac, mdim=0):
     def f(u):
         sh = u.shape; U = u.reshape(-1, d); out = []
         for i in range(0, len(U), 4096):
             x = U[i:i + 4096]
             g = mlp.gate_proj(x); h = mlp.act_fn(g) * mlp.up_proj(x)
-            if m:                                                  # exact ternary sum over the m largest-|x| input dims
+            if mdim:                                               # exact ternary sum over the m largest-|x| input dims
                 xq = ActQuant.apply(x).float()
-                J = xq.abs().topk(m, -1).indices
+                J = xq.abs().topk(mdim, -1).indices
                 xs = torch.zeros_like(xq).scatter_(-1, J, xq.gather(-1, J))
                 gh = xs @ What.T
                 cand = torch.zeros_like(g, dtype=torch.bool).scatter_(-1, gh.topk(Cn, -1).indices, True)
