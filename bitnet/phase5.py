@@ -59,14 +59,30 @@ def topk_mask(score, k):
     return torch.zeros_like(score, dtype=torch.bool).scatter_(-1, score.topk(k, -1).indices, True)
 
 
-def sparse_mlp(mlp, k, AB=None):
+KSTAT = [0.0, 0]
+
+
+def energy_mask(g, frac):
+    """per token: fewest neurons whose relu(g)^2 covers `frac` of the token's total relu(g)^2."""
+    e = torch.relu(g).float().pow(2)
+    v, idx = e.sort(-1, descending=True)
+    c = v.cumsum(-1); keep = (c - v) < frac * c[:, -1:]
+    KSTAT[0] += keep.sum().item(); KSTAT[1] += len(g)
+    return torch.zeros_like(keep).scatter_(-1, idx, keep)
+
+
+def sparse_mlp(mlp, k, AB=None, frac=None):
     def f(u):
         sh = u.shape; U = u.reshape(-1, d); out = []
         for i in range(0, len(U), 4096):
             x = U[i:i + 4096]
             g = mlp.gate_proj(x); h = mlp.act_fn(g) * mlp.up_proj(x)
-            score = torch.relu(g).float() if AB is None else torch.relu((ActQuant.apply(x).float() @ AB[0]) @ AB[1])
-            out.append(mlp.down_proj(mlp.ffn_sub_norm(h * topk_mask(score, k))))
+            if frac is not None:
+                m = energy_mask(g, frac)
+            else:
+                score = torch.relu(g).float() if AB is None else torch.relu((ActQuant.apply(x).float() @ AB[0]) @ AB[1])
+                m = topk_mask(score, k)
+            out.append(mlp.down_proj(mlp.ffn_sub_norm(h * m)))
         return torch.cat(out).reshape(sh)
     return f
 
@@ -87,20 +103,25 @@ if a.keytrees:
     log(a.out, rec)
 
 for cfg in a.configs.split(","):
-    sel, k = cfg.split(":"); k = int(k)
+    sel, k = cfg.split(":")
+    frac = float(k) if sel == "gatee" else None
+    k = int(float(k)) if frac is None else 0
     STATE.mlps = {}
     for l in range(NL):
         mlp = model.model.layers[l].mlp
         AB = lowrank(l, int(sel[len("lowrank"):])) if sel.startswith("lowrank") else None
-        STATE.mlps[l] = sparse_mlp(mlp, k, AB)
+        STATE.mlps[l] = sparse_mlp(mlp, k, AB, frac)
     r_ = int(sel[len("lowrank"):]) if sel.startswith("lowrank") else 0
     macs = (r_ * (d + F) + 3 * k * d) if r_ else (F * d + 2 * k * d)
+    KSTAT[0] = KSTAT[1] = 0
     rec = {"phase": 6 if a.keytrees else 5, "config": cfg, "attn": "select+rescore" if a.keytrees else "exact",
            "mlp_macs": macs, "dense_mlp_macs": 3 * F * d}
     STATE.attn_stats = {}
     for name, X in [("wiki", wiki_test), ("chat", chat_test)]:
         r = evaluate(model, X, a.bs, kl=True, device=dev)
         rec.update({f"{name}_ppl": round(r["ppl"], 4), f"{name}_kl": round(r["kl"], 5), f"{name}_top1": round(r["top1_agree"], 4)})
+    if frac is not None:
+        rec["mean_k"] = round(KSTAT[0] / max(KSTAT[1], 1), 1); rec["mlp_macs"] = int(F * d + 2 * rec["mean_k"] * d)
     log(a.out, rec)
 STATE.mlps = {}
 log(a.out, {"event": "done", "total_s": round(time.time() - t0, 1)})
