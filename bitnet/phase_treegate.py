@@ -22,6 +22,8 @@ ap.add_argument("--cands", default="1536,2048,3072")
 ap.add_argument("--frac", type=float, default=0.99)
 ap.add_argument("--partial", default="")                          # input dims m for partial-sum scoring, e.g. 256,512
 ap.add_argument("--partial_cands", default="2048,3072")
+ap.add_argument("--rot", default="")                              # S:C list, trees fitted after a random orthogonal rotation (control)
+ap.add_argument("--mix", default="")                              # K:S:C list, K token regimes (spectral/k-means on |x|), one code each
 ap.add_argument("--hybrid", default="")                           # m:S:C list, e.g. 128:32:2048,256:32:2048
 ap.add_argument("--all_partial", default="")                      # all-layer partial configs m:C
 ap.add_argument("--all_hybrid", default="")                       # all-layer hybrid configs m:S:C
@@ -98,7 +100,48 @@ def fit_trees(l, S):
     return kt.encode(W[None])[0][0], W                           # W_hat (F,d), W
 
 
-def tree_mlp(mlp, What, Cn, frac, mdim=0, Wres=None):
+def capture_inputs(l, nwin=24):
+    xs = []
+    class Stop(Exception): pass
+    def cap(ll, u, y):
+        if ll != l: return
+        xs.append(ActQuant.apply(u.reshape(-1, d)).float()); raise Stop
+    STATE.mlp_capture = cap; STATE.enabled = False
+    with torch.no_grad():
+        for i in range(0, nwin, 2):
+            try: model.model(calib[i:i + 2].to(dev))
+            except Stop: pass
+    STATE.mlp_capture = None; STATE.enabled = True
+    return torch.cat(xs)
+
+
+def regime_features(x):
+    f = x.abs(); return f / f.norm(dim=-1, keepdim=True).clamp(min=1e-12)
+
+
+def fit_mixture(l, K, S):
+    """spectral-style regimes: k-means on the normalized |x| profile (which dims are outliers); one tree code per
+    regime fitted in that regime's input metric. Router = nearest regime centroid."""
+    X = capture_inputs(l); Fe = regime_features(X)
+    g = torch.Generator(device=dev).manual_seed(0)
+    mu = Fe[torch.randperm(len(Fe), generator=g, device=dev)[:K]].clone()
+    for _ in range(25):
+        a_ = (Fe @ mu.T).argmax(1)
+        for k in range(K):
+            sel = a_ == k
+            if sel.any(): mu[k] = Fe[sel].mean(0); mu[k] /= mu[k].norm().clamp(min=1e-12)
+    a_ = (Fe @ mu.T).argmax(1)
+    W = ternary(model.model.layers[l].mlp.gate_proj.weight.float())
+    codes, sizes = [], []
+    for k in range(K):
+        Xk = X[a_ == k]; sizes.append(len(Xk))
+        Sk = (Xk.T @ Xk / max(len(Xk), 1)) if len(Xk) > 10 else C[l]
+        kt = KeyTrees(1, S, 4, d).to(dev); kt.fit(W[None], Sk[None])
+        codes.append(kt.encode(W[None])[0][0])
+    return mu, torch.stack(codes), sizes
+
+
+def tree_mlp(mlp, What, Cn, frac, mdim=0, Wres=None, mix=None):
     def f(u):
         sh = u.shape; U = u.reshape(-1, d); out = []
         for i in range(0, len(U), 4096):
@@ -110,6 +153,12 @@ def tree_mlp(mlp, What, Cn, frac, mdim=0, Wres=None):
                 xs = torch.zeros_like(xq).scatter_(-1, J, xq.gather(-1, J))
                 gh = xs @ What.T
                 if Wres is not None: gh = gh + (xq - xs) @ Wres.T             # tree estimate of the remainder
+                cand = torch.zeros_like(g, dtype=torch.bool).scatter_(-1, gh.topk(Cn, -1).indices, True)
+            elif mix is not None:
+                mu, codes = mix
+                xq = ActQuant.apply(x).float(); k_ = (regime_features(xq) @ mu.T).argmax(1)
+                gh = torch.einsum("nd,nfd->nf", xq, codes[k_]) if len(xq) <= 256 else torch.cat(
+                    [torch.einsum("nd,nfd->nf", xq[j:j + 256], codes[k_[j:j + 256]]) for j in range(0, len(xq), 256)])
                 cand = torch.zeros_like(g, dtype=torch.bool).scatter_(-1, gh.topk(Cn, -1).indices, True)
             elif What is None:
                 cand = torch.ones_like(g, dtype=torch.bool)
@@ -151,6 +200,20 @@ for L in map(int, filter(None, a.layers.split(","))):
         for Cn in map(int, a.partial_cands.split(",")):
             STATE.mlps = {L: tree_mlp(mlp, W, Cn, a.frac, m)}
             ev({"layer": L, "sel": "partial-input exact sum", "m": m, "C": Cn}, W8, C8)
+    for cfg in filter(None, a.rot.split(",")):
+        S, Cn = map(int, cfg.split(":"))
+        Q = torch.linalg.qr(torch.randn(d, d, device=dev, generator=torch.Generator(device=dev).manual_seed(1)))[0]
+        W = ternary(mlp.gate_proj.weight.float())
+        kt = KeyTrees(1, S, 4, d).to(dev); kt.fit((W @ Q)[None], (Q.T @ C[L] @ Q)[None])
+        What = kt.encode((W @ Q)[None])[0][0] @ Q.T                     # back to the original basis
+        STATE.mlps = {L: tree_mlp(mlp, What, Cn, a.frac)}
+        ev({"layer": L, "sel": "trees after random rotation", "S": S, "C": Cn}, W8, C8)
+    for cfg in filter(None, a.mix.split(",")):
+        K, S, Cn = map(int, cfg.split(":"))
+        mu, codes, sizes = fit_mixture(L, K, S)
+        STATE.mlps = {L: tree_mlp(mlp, None, Cn, a.frac, mix=(mu, codes))}
+        ev({"layer": L, "sel": "regime mixture of tree codes", "K": K, "S": S, "C": Cn, "regime_sizes": sizes}, W8, C8)
+        del codes
     for cfg in filter(None, a.hybrid.split(",")):
         m, S, Cn = map(int, cfg.split(":"))
         Wres, W = fit_res_trees(L, S, m)
