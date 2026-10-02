@@ -1,0 +1,12 @@
+{"event": "hidden", "tokens": {"wiki": 32752, "chat": 32752}, "V": 128256, "d": 2560, "t": "02:35:30"}
+{"event": "fit", "S": 64, "bytes_per_token": 32, "s": 21.3, "degenerate_nodes": 0.0, "rel_err": 0.05393, "t": "02:36:06"}
+{"S": 64, "bytes_per_token": 32, "cands": 2048, "wiki_top1": 0.98983, "wiki_mass": 0.96819, "wiki_kl": 0.18799, "wiki_ppl": 17.3586, "chat_top1": 0.98473, "chat_mass": 0.97731, "chat_kl": 0.27674, "chat_ppl": 5.6786, "macs": 7864320, "lookup_bytes": 4104192, "dense_macs": 328335360, "t": "02:36:12"}
+{"S": 64, "bytes_per_token": 32, "cands": 4096, "wiki_top1": 0.99576, "wiki_mass": 0.98319, "wiki_kl": 0.09154, "wiki_ppl": 15.5051, "chat_top1": 0.99402, "chat_mass": 0.98967, "chat_kl": 0.11906, "chat_ppl": 4.8525, "macs": 13107200, "lookup_bytes": 4104192, "dense_macs": 328335360, "t": "02:36:18"}
+{"S": 64, "bytes_per_token": 32, "cands": 8192, "wiki_top1": 0.99866, "wiki_mass": 0.99207, "wiki_kl": 0.03503, "wiki_ppl": 14.5834, "chat_top1": 0.99783, "chat_mass": 0.9952, "chat_kl": 0.04897, "chat_ppl": 4.4799, "macs": 23592960, "lookup_bytes": 4104192, "dense_macs": 328335360, "t": "02:36:24"}
+{"event": "fit", "S": 128, "bytes_per_token": 64, "s": 42.7, "degenerate_nodes": 0.0, "rel_err": 0.04278, "t": "02:37:08"}
+{"S": 128, "bytes_per_token": 64, "cands": 2048, "wiki_top1": 0.99792, "wiki_mass": 0.98053, "wiki_kl": 0.06001, "wiki_ppl": 15.0444, "chat_top1": 0.99704, "chat_mass": 0.99138, "chat_kl": 0.06615, "chat_ppl": 4.6237, "macs": 10485760, "lookup_bytes": 8208384, "dense_macs": 328335360, "t": "02:37:14"}
+{"S": 128, "bytes_per_token": 64, "cands": 4096, "wiki_top1": 0.99915, "wiki_mass": 0.98932, "wiki_kl": 0.0277, "wiki_ppl": 14.4926, "chat_top1": 0.99902, "chat_mass": 0.99561, "chat_kl": 0.02769, "chat_ppl": 4.4139, "macs": 15728640, "lookup_bytes": 8208384, "dense_macs": 328335360, "t": "02:37:20"}
+{"S": 128, "bytes_per_token": 64, "cands": 8192, "wiki_top1": 0.99966, "wiki_mass": 0.99442, "wiki_kl": 0.01204, "wiki_ppl": 14.2531, "chat_top1": 0.99954, "chat_mass": 0.99752, "chat_kl": 0.01407, "chat_ppl": 4.335, "macs": 26214400, "lookup_bytes": 8208384, "dense_macs": 328335360, "t": "02:37:26"}
+{"event": "exact", "data": "wiki", "ppl": 14.126, "t": "02:37:28"}
+{"event": "exact", "data": "chat", "ppl": 4.2708, "t": "02:37:29"}
+{"event": "done", "total_s": 143.1, "t": "02:37:29"}
