@@ -252,3 +252,32 @@ MLP: energy 0.99; head: 128 vocab trees, N=8192; each converted against the base
 | MLP | 13.93 | 0.0028 | 0.971 | 0.0021 | 1916 neurons |
 | head | 14.08 | 0.0142 | **0.9996** | 0.0157 | |
 | attention + MLP | 13.92 | 0.0031 | 0.970 | 0.0023 | errors do not stack beyond the floor |
+
+## Phase 7 — inside bitnet.cpp (end to end, this machine)
+`engine/tree-bitnet.{h,cpp}` + `engine/bitnet_tree.patch` (llama.cpp submodule of bitnet.cpp 0b341e5; the patch also
+contains the relu² fix). Decode-path ggml custom ops, enabled by env vars:
+- sparse exact MLP: stock dense gate matmul → `op_hsel` (per-token selection by relu(g)² energy, up rows of the
+  selected neurons, relu²·up) → stock RMSNorm·w → `op_down` (transposed down rows, built lazily at first use).
+- tree output layer: `op_tables` (S·16 leaf scores) → `op_scan` (pshufb fast-scan of 128k tokens, 16-bit tables
+  as two byte planes) → `op_head` (top-N by histogram, exact f16 rows for candidates, tree score elsewhere).
+
+Correctness: with all active neurons the layer-0 MLP output equals stock to 1e-7 relative (`llama-eval-callback`);
+ppl differences of ~0.2% between equivalent paths are the model's own rounding chaos (stock itself gives 10.630
+batched vs 10.611 token-by-token on chunk 1).
+
+`llama-perplexity -c 2048 --chunks 3` (WikiText-2 test, TREE_ALL=1): stock **13.717** | tree head N=8192 **13.859
+(+1.0%)** | N=4096 14.127 (+3.0%) — same as the PyTorch numbers (+0.9% / +2.6%).
+
+`llama-bench -p 0 -n 64` decode tok/s (short context):
+
+| threads | stock | tree head N=8192 | tree head N=4096 | sparse MLP 0.99 only | head N=8192 + sparse MLP 0.99 |
+|---|---|---|---|---|---|
+| 1 | 6.60 | **9.79 (1.48×)** | 10.44 (1.58×) | 7.35 (1.11×) | **11.81 (1.79×)** |
+| 4 | 22.83 | 27.64 (1.21×) | 27.95 (1.22×) | 21.85 (0.96×) | 27.07 (1.19×) |
+
+Mean selected MLP neurons on llama-bench's tokens: 2070 (frac 0.99), 1850 (0.98), 1497 (0.95); 2888 have g>0.
+- The tree head is the big end-to-end win (it removes ~40% of single-thread decode work).
+- The sparse MLP helps single-threaded but not at 4 threads: decode there is bandwidth-bound and gathered rows
+  (scattered 640 B reads, 32 B slices per thread in `op_down`) use bandwidth badly. Fixes to try: neuron-major
+  partition with a reduction op, row reordering by co-activation so selected rows are contiguous.
+- Attention select+rescore is not in the engine yet (it pays off at long context: stock drops to 7.9 tok/s at 8k).
