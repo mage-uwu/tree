@@ -20,6 +20,8 @@ ap.add_argument("--layers", default="15,2,28")
 ap.add_argument("--trees", default="16,32,64")
 ap.add_argument("--cands", default="1536,2048,3072")
 ap.add_argument("--frac", type=float, default=0.99)
+ap.add_argument("--partial", default="")                          # input dims m for partial-sum scoring, e.g. 256,512
+ap.add_argument("--partial_cands", default="2048,3072")
 ap.add_argument("--all", default="32:2048,32:3072,64:2048")     # all-layer configs S:C ("" to skip)
 ap.add_argument("--calib_windows", type=int, default=48)
 ap.add_argument("--eval_wiki", type=int, default=32)
@@ -66,13 +68,19 @@ def fit_trees(l, S):
     return kt.encode(W[None])[0][0], W                           # W_hat (F,d), W
 
 
-def tree_mlp(mlp, What, Cn, frac):
+def tree_mlp(mlp, What, Cn, frac, m=0):
     def f(u):
         sh = u.shape; U = u.reshape(-1, d); out = []
         for i in range(0, len(U), 4096):
             x = U[i:i + 4096]
             g = mlp.gate_proj(x); h = mlp.act_fn(g) * mlp.up_proj(x)
-            if What is None:
+            if m:                                                  # exact ternary sum over the m largest-|x| input dims
+                xq = ActQuant.apply(x).float()
+                J = xq.abs().topk(m, -1).indices
+                xs = torch.zeros_like(xq).scatter_(-1, J, xq.gather(-1, J))
+                gh = xs @ What.T
+                cand = torch.zeros_like(g, dtype=torch.bool).scatter_(-1, gh.topk(Cn, -1).indices, True)
+            elif What is None:
                 cand = torch.ones_like(g, dtype=torch.bool)
             else:
                 gh = ActQuant.apply(x).float() @ What.T
@@ -95,8 +103,8 @@ def ev(rec, wiki, chat):
         rec.update({f"{name}_ppl": round(r["ppl"], 4), f"{name}_kl": round(r["kl"], 5), f"{name}_top1": round(r["top1_agree"], 4)})
     if STAT["n"]:
         rec["cand_energy_share"] = round(STAT["cand_energy"] / STAT["n"], 5); rec["mean_k"] = round(STAT["k"] / STAT["n"], 1)
-        S, Cn = rec.get("S", 0), rec.get("C", F)
-        rec["mlp_macs"] = int(S * 16 * d + (Cn if S else F) * d + 2 * rec["mean_k"] * d)
+        S, Cn, m = rec.get("S", 0), rec.get("C", F), rec.get("m", 0)
+        rec["mlp_macs"] = int(S * 16 * d + m * F + (Cn if (S or m) else F) * d + 2 * rec["mean_k"] * d)
         rec["lookup_bytes"] = F * S // 2
     rec["dense_mlp_macs"] = 3 * F * d
     log(a.out, rec)
@@ -107,7 +115,12 @@ for L in map(int, filter(None, a.layers.split(","))):
     mlp = model.model.layers[L].mlp
     STATE.mlps = {L: tree_mlp(mlp, None, F, a.frac)}
     ev({"layer": L, "sel": f"exact gate, energy {a.frac}"}, W8, C8)
-    for S in map(int, a.trees.split(",")):
+    for m in map(int, filter(None, a.partial.split(","))):
+        W = ternary(mlp.gate_proj.weight.float())
+        for Cn in map(int, a.partial_cands.split(",")):
+            STATE.mlps = {L: tree_mlp(mlp, W, Cn, a.frac, m)}
+            ev({"layer": L, "sel": "partial-input exact sum", "m": m, "C": Cn}, W8, C8)
+    for S in map(int, filter(None, a.trees.split(","))):
         t = time.time(); What, W = fit_trees(L, S); fs = time.time() - t
         # score quality on held-out-ish inputs: correlation of tree gate scores with exact
         xs = ActQuant.apply(torch.randn(4096, d, device=dev) @ torch.linalg.cholesky(C[L].double() + 1e-6 * torch.eye(d, device=dev, dtype=torch.float64)).float().T)
