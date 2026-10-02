@@ -1,0 +1,3 @@
+{"event": "calib", "tokens": 98304, "s": 138.2, "t": "05:27:40"}
+{"layer": 2, "sel": "exact gate, energy 0.99", "wiki_ppl": 14.0162, "wiki_kl": 0.0023, "wiki_top1": 0.9737, "chat_ppl": 4.2704, "chat_kl": 0.0017, "chat_top1": 0.9824, "cand_energy_share": 1.0, "mean_k": 889.3, "mlp_macs": 22247936, "lookup_bytes": 0, "dense_mlp_macs": 53084160, "t": "05:28:05"}
+{"layer": 2, "sel": "trees after random rotation", "S": 64, "C": 3072, "wiki_ppl": 14.4641, "wiki_kl": 0.05266, "wiki_top1": 0.8996, "chat_ppl": 4.2397, "chat_kl": 0.02948, "chat_top1": 0.9376, "cand_energy_share": 0.77286, "mean_k": 432.6, "mlp_macs": 12700672, "lookup_bytes": 221184, "dense_mlp_macs": 53084160, "t": "05:28:31"}

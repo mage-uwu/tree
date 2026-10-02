@@ -157,8 +157,10 @@ def tree_mlp(mlp, What, Cn, frac, mdim=0, Wres=None, mix=None):
             elif mix is not None:
                 mu, codes = mix
                 xq = ActQuant.apply(x).float(); k_ = (regime_features(xq) @ mu.T).argmax(1)
-                gh = torch.einsum("nd,nfd->nf", xq, codes[k_]) if len(xq) <= 256 else torch.cat(
-                    [torch.einsum("nd,nfd->nf", xq[j:j + 256], codes[k_[j:j + 256]]) for j in range(0, len(xq), 256)])
+                gh = torch.empty(len(xq), F, device=xq.device)
+                for k in range(len(codes)):
+                    sel = k_ == k
+                    if sel.any(): gh[sel] = xq[sel] @ codes[k].T
                 cand = torch.zeros_like(g, dtype=torch.bool).scatter_(-1, gh.topk(Cn, -1).indices, True)
             elif What is None:
                 cand = torch.ones_like(g, dtype=torch.bool)
