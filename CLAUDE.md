@@ -14,6 +14,9 @@ The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the
   (head + sparse MLP + attention) 1.49× at tau 5 (+1.6% ppl) / 1.77× at tau 4 (+2.8%). Notebook Phase 8.
 - `TREE_KV8=1` (int8 K/V copy, lossless) lifts everything-on tau 5 to 1.64×. 64 trees/key: fewer reads but no net
   speed (scan/tables double); keep 32. TEAL-style input sparsity fails on BitNet (Phase 9). Notebook Phase 10.
+- MLP→tree, last attempt (Phase 11): routing in *neuron space* (clusters by which neurons fire, static exact subsets,
+  linear router) is 3× better than input-space trees (single-layer KL 0.012 at 6.6× fewer MLP MACs), and local
+  distillation helps modestly, but it is ~10× short of a 30-layer budget. Treat MLP-to-tree as closed without training.
 - Next: AVX-512 fast-scan and int8 leaves (would make 64 trees pay); per-layer tau; sparse-MLP memory layout.
 
 # Tree-BitNet handoff

@@ -1,0 +1,55 @@
+{"phase": 11, "event": "data", "layer": 15, "calib_tokens": 409600, "heldout_tokens": 16384, "F": 6912, "t": "18:18:29"}
+{"phase": 11, "stage": 0, "config": "float student, all neurons", "rel_err": 0.0025, "t": "18:18:30"}
+{"phase": 11, "stage": 1, "config": "oracle per-token top-512", "rel_err": 0.05069, "t": "18:18:30"}
+{"phase": 11, "stage": 1, "config": "oracle per-token top-1024", "rel_err": 0.0139, "t": "18:18:30"}
+{"phase": 11, "stage": 1, "config": "oracle per-token top-2048", "rel_err": 0.00264, "t": "18:18:30"}
+{"phase": 11, "stage": 1, "config": "mean output (MLP removed)", "rel_err": 1.00437, "t": "18:18:30"}
+{"phase": 11, "stage": 2, "geometry": "input u (cosine)", "k1": 0.92464, "k16": 0.54982, "k64": 0.585, "t": "18:18:30"}
+{"phase": 11, "stage": 2, "geometry": "gate pre-activations g = W_gate u (cosine)", "k1": 0.94368, "k16": 0.57258, "k64": 0.60903, "t": "18:18:30"}
+{"phase": 11, "stage": 2, "geometry": "neuron contribution profile (cosine; needs the full MLP)", "k1": 0.8408, "k16": 0.52322, "k64": 0.54799, "t": "18:18:31"}
+{"phase": 11, "stage": 3, "K": 1, "m": 512, "router_acc": 1.0, "macs": 3934720, "mlp_speedup_macs": 13.49, "mean_coverage": 0.279, "rel_err_ceiling": 0.82691, "rel_err_routed": 0.82691, "t": "18:18:31"}
+{"phase": 11, "stage": 3, "K": 1, "m": 1024, "router_acc": 1.0, "macs": 7866880, "mlp_speedup_macs": 6.75, "mean_coverage": 0.4153, "rel_err_ceiling": 0.67567, "rel_err_routed": 0.67567, "t": "18:18:31"}
+{"phase": 11, "stage": 3, "K": 1, "m": 2048, "router_acc": 1.0, "macs": 15731200, "mlp_speedup_macs": 3.37, "mean_coverage": 0.6103, "rel_err_ceiling": 0.45202, "rel_err_routed": 0.45202, "t": "18:18:31"}
+{"phase": 11, "stage": 3, "K": 16, "m": 512, "router_acc": 0.8745, "macs": 3973120, "mlp_speedup_macs": 13.36, "mean_coverage": 0.5205, "rel_err_ceiling": 0.6091, "rel_err_routed": 0.61924, "rel_err_routed_top2": 0.50799, "t": "18:18:33"}
+{"phase": 11, "stage": 3, "K": 16, "m": 1024, "router_acc": 0.8745, "macs": 7905280, "mlp_speedup_macs": 6.72, "mean_coverage": 0.6612, "rel_err_ceiling": 0.44513, "rel_err_routed": 0.45528, "rel_err_routed_top2": 0.33287, "t": "18:18:33"}
+{"phase": 11, "stage": 3, "K": 16, "m": 2048, "router_acc": 0.8745, "macs": 15769600, "mlp_speedup_macs": 3.37, "mean_coverage": 0.8145, "rel_err_ceiling": 0.25937, "rel_err_routed": 0.26963, "rel_err_routed_top2": 0.16066, "t": "18:18:33"}
+{"phase": 11, "stage": 3, "K": 64, "m": 512, "router_acc": 0.8612, "macs": 4096000, "mlp_speedup_macs": 12.96, "mean_coverage": 0.5866, "rel_err_ceiling": 0.51678, "rel_err_routed": 0.52753, "rel_err_routed_top2": 0.41568, "t": "18:18:35"}
+{"phase": 11, "stage": 3, "K": 64, "m": 1024, "router_acc": 0.8612, "macs": 8028160, "mlp_speedup_macs": 6.61, "mean_coverage": 0.7181, "rel_err_ceiling": 0.36684, "rel_err_routed": 0.37681, "rel_err_routed_top2": 0.26454, "t": "18:18:36"}
+{"phase": 11, "stage": 3, "K": 64, "m": 2048, "router_acc": 0.8612, "macs": 15892480, "mlp_speedup_macs": 3.34, "mean_coverage": 0.8545, "rel_err_ceiling": 0.20249, "rel_err_routed": 0.21045, "rel_err_routed_top2": 0.11949, "t": "18:18:37"}
+{"phase": 11, "stage": 3, "K": 256, "m": 512, "router_acc": 0.8037, "macs": 4587520, "mlp_speedup_macs": 11.57, "mean_coverage": 0.6421, "rel_err_ceiling": 0.46699, "rel_err_routed": 0.47698, "rel_err_routed_top2": 0.36556, "t": "18:18:41"}
+{"phase": 11, "stage": 3, "K": 256, "m": 1024, "router_acc": 0.8037, "macs": 8519680, "mlp_speedup_macs": 6.23, "mean_coverage": 0.7657, "rel_err_ceiling": 0.32733, "rel_err_routed": 0.3347, "rel_err_routed_top2": 0.22682, "t": "18:18:44"}
+{"phase": 11, "stage": 3, "K": 256, "m": 2048, "router_acc": 0.8037, "macs": 16384000, "mlp_speedup_macs": 3.24, "mean_coverage": 0.8869, "rel_err_ceiling": 0.18012, "rel_err_routed": 0.18413, "rel_err_routed_top2": 0.10048, "t": "18:18:47"}
+{"phase": 11, "stage": "kl", "config": "MLP removed (mean output)", "wiki_ppl": 15.4662, "wiki_kl": 0.06018, "wiki_top1": 0.8696, "chat_ppl": 4.672, "chat_kl": 0.04743, "chat_top1": 0.9059, "t": "18:18:52"}
+{"phase": 11, "stage": "kl", "config": "routed exact subsets K=16 m=1024", "wiki_ppl": 14.2111, "wiki_kl": 0.0142, "wiki_top1": 0.9364, "chat_ppl": 4.6772, "chat_kl": 0.0239, "chat_top1": 0.9315, "t": "18:18:56"}
+{"phase": 11, "stage": "kl", "config": "routed exact subsets K=64 m=1024", "wiki_ppl": 14.1911, "wiki_kl": 0.01171, "wiki_top1": 0.9423, "chat_ppl": 4.6792, "chat_kl": 0.01981, "chat_top1": 0.9388, "t": "18:19:01"}
+{"phase": 11, "stage": "kl", "config": "routed exact subsets K=64 m=512", "wiki_ppl": 14.2455, "wiki_kl": 0.01731, "wiki_top1": 0.9299, "chat_ppl": 4.707, "chat_kl": 0.02641, "chat_top1": 0.9287, "t": "18:19:06"}
+{"phase": 11, "stage": "kl", "config": "routed exact subsets K=256 m=1024", "wiki_ppl": 14.1507, "wiki_kl": 0.0105, "wiki_top1": 0.9459, "chat_ppl": 4.6546, "chat_kl": 0.01738, "chat_top1": 0.9449, "t": "18:19:11"}
+{"phase": 11, "stage": 4, "config": "distilled K=1 m=1024", "steps": 800, "rel_err": 0.65871, "macs": 7866880, "MB_int8_if_leaves_duplicated": 7.5, "train_s": 17.0, "wiki_ppl": 14.2243, "wiki_kl": 0.02417, "wiki_top1": 0.9142, "chat_ppl": 4.718, "chat_kl": 0.03604, "chat_top1": 0.9143, "t": "18:19:33"}
+{"phase": 11, "stage": 4, "config": "distilled K=16 m=1024", "steps": 800, "rel_err": 0.43991, "macs": 7905280, "MB_int8_if_leaves_duplicated": 120.0, "train_s": 45.3, "wiki_ppl": 14.1601, "wiki_kl": 0.01393, "wiki_top1": 0.9378, "chat_ppl": 4.6672, "chat_kl": 0.02376, "chat_top1": 0.9314, "t": "18:20:22"}
+{"phase": 11, "stage": 4, "config": "distilled K=64 m=1024", "steps": 800, "rel_err": 0.36447, "macs": 8028160, "MB_int8_if_leaves_duplicated": 480.0, "train_s": 411.4, "wiki_ppl": 14.1262, "wiki_kl": 0.01142, "wiki_top1": 0.9428, "chat_ppl": 4.668, "chat_kl": 0.01956, "chat_top1": 0.9386, "t": "18:27:19"}
+{"phase": 11, "stage": 4, "config": "distilled K=64 m=512", "steps": 800, "rel_err": 0.51427, "macs": 4096000, "MB_int8_if_leaves_duplicated": 240.0, "train_s": 217.0, "wiki_ppl": 14.1705, "wiki_kl": 0.01701, "wiki_top1": 0.9308, "chat_ppl": 4.6957, "chat_kl": 0.02596, "chat_top1": 0.9303, "t": "18:31:00"}
+{"event": "done", "total_s": 825.9, "t": "18:31:00"}
+{"phase": 11, "event": "data", "layer": 25, "calib_tokens": 409600, "heldout_tokens": 16384, "F": 6912, "t": "18:32:07"}
+{"phase": 11, "stage": 0, "config": "float student, all neurons", "rel_err": 0.00187, "t": "18:32:07"}
+{"phase": 11, "stage": 1, "config": "oracle per-token top-512", "rel_err": 0.01266, "t": "18:32:07"}
+{"phase": 11, "stage": 1, "config": "oracle per-token top-1024", "rel_err": 0.00209, "t": "18:32:07"}
+{"phase": 11, "stage": 1, "config": "oracle per-token top-2048", "rel_err": 0.00187, "t": "18:32:07"}
+{"phase": 11, "stage": 1, "config": "mean output (MLP removed)", "rel_err": 1.00842, "t": "18:32:07"}
+{"phase": 11, "stage": 2, "geometry": "input u (cosine)", "k1": 1.10915, "k16": 0.67643, "k64": 0.69687, "t": "18:32:07"}
+{"phase": 11, "stage": 2, "geometry": "gate pre-activations g = W_gate u (cosine)", "k1": 1.07756, "k16": 0.68026, "k64": 0.70694, "t": "18:32:07"}
+{"phase": 11, "stage": 2, "geometry": "neuron contribution profile (cosine; needs the full MLP)", "k1": 1.07097, "k16": 0.66656, "k64": 0.67206, "t": "18:32:08"}
+{"phase": 11, "stage": 3, "K": 1, "m": 512, "router_acc": 1.0, "macs": 3934720, "mlp_speedup_macs": 13.49, "mean_coverage": 0.3278, "rel_err_ceiling": 0.92386, "rel_err_routed": 0.92386, "t": "18:32:09"}
+{"phase": 11, "stage": 3, "K": 1, "m": 1024, "router_acc": 1.0, "macs": 7866880, "mlp_speedup_macs": 6.75, "mean_coverage": 0.4742, "rel_err_ceiling": 0.68268, "rel_err_routed": 0.68268, "t": "18:32:09"}
+{"phase": 11, "stage": 3, "K": 1, "m": 2048, "router_acc": 1.0, "macs": 15731200, "mlp_speedup_macs": 3.37, "mean_coverage": 0.6625, "rel_err_ceiling": 0.44752, "rel_err_routed": 0.44752, "t": "18:32:09"}
+{"phase": 11, "stage": 3, "K": 16, "m": 512, "router_acc": 0.8364, "macs": 3973120, "mlp_speedup_macs": 13.36, "mean_coverage": 0.5888, "rel_err_ceiling": 0.68268, "rel_err_routed": 0.70802, "rel_err_routed_top2": 0.52421, "t": "18:32:10"}
+{"phase": 11, "stage": 3, "K": 16, "m": 1024, "router_acc": 0.8364, "macs": 7905280, "mlp_speedup_macs": 6.72, "mean_coverage": 0.726, "rel_err_ceiling": 0.47253, "rel_err_routed": 0.4957, "rel_err_routed_top2": 0.30425, "t": "18:32:10"}
+{"phase": 11, "stage": 3, "K": 16, "m": 2048, "router_acc": 0.8364, "macs": 15769600, "mlp_speedup_macs": 3.37, "mean_coverage": 0.8665, "rel_err_ceiling": 0.23505, "rel_err_routed": 0.24836, "rel_err_routed_top2": 0.12084, "t": "18:32:10"}
+{"phase": 11, "stage": 3, "K": 64, "m": 512, "router_acc": 0.7919, "macs": 4096000, "mlp_speedup_macs": 12.96, "mean_coverage": 0.6837, "rel_err_ceiling": 0.61277, "rel_err_routed": 0.63824, "rel_err_routed_top2": 0.45881, "t": "18:32:12"}
+{"phase": 11, "stage": 3, "K": 64, "m": 1024, "router_acc": 0.7919, "macs": 8028160, "mlp_speedup_macs": 6.61, "mean_coverage": 0.8051, "rel_err_ceiling": 0.38933, "rel_err_routed": 0.40904, "rel_err_routed_top2": 0.24523, "t": "18:32:13"}
+{"phase": 11, "stage": 3, "K": 64, "m": 2048, "router_acc": 0.7919, "macs": 15892480, "mlp_speedup_macs": 3.34, "mean_coverage": 0.9151, "rel_err_ceiling": 0.19789, "rel_err_routed": 0.21208, "rel_err_routed_top2": 0.09925, "t": "18:32:14"}
+{"phase": 11, "stage": "kl", "config": "MLP removed (mean output)", "wiki_ppl": 14.9989, "wiki_kl": 0.06261, "wiki_top1": 0.8941, "chat_ppl": 4.7509, "chat_kl": 0.04312, "chat_top1": 0.9245, "t": "18:32:19"}
+{"phase": 11, "stage": "kl", "config": "routed exact subsets K=16 m=1024", "wiki_ppl": 14.3312, "wiki_kl": 0.02213, "wiki_top1": 0.9406, "chat_ppl": 4.7368, "chat_kl": 0.02319, "chat_top1": 0.9483, "t": "18:32:23"}
+{"phase": 11, "stage": "kl", "config": "routed exact subsets K=64 m=1024", "wiki_ppl": 14.2681, "wiki_kl": 0.01787, "wiki_top1": 0.9468, "chat_ppl": 4.7046, "chat_kl": 0.01788, "chat_top1": 0.9538, "t": "18:32:28"}
+{"phase": 11, "stage": 4, "config": "distilled K=1 m=1024", "steps": 800, "rel_err": 0.66563, "macs": 7866880, "MB_int8_if_leaves_duplicated": 7.5, "train_s": 16.8, "wiki_ppl": 14.4454, "wiki_kl": 0.03208, "wiki_top1": 0.9225, "chat_ppl": 4.7712, "chat_kl": 0.036, "chat_top1": 0.9315, "t": "18:32:49"}
+{"phase": 11, "stage": 4, "config": "distilled K=64 m=1024", "steps": 800, "rel_err": 0.39263, "macs": 8028160, "MB_int8_if_leaves_duplicated": 480.0, "train_s": 412.0, "wiki_ppl": 14.2669, "wiki_kl": 0.01736, "wiki_top1": 0.9488, "chat_ppl": 4.7027, "chat_kl": 0.01768, "chat_top1": 0.9533, "t": "18:39:46"}
+{"event": "done", "total_s": 497.6, "t": "18:39:46"}

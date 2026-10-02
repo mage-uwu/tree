@@ -530,3 +530,70 @@ scan, int8 leaves); keep S=32.
 **End to end, everything on, with int8** (7479-token prompt + 512 tokens, 4 threads, same window):
 stock fa=0 **10.47** | head + MLP + attention tau 5 + int8 **17.16 (1.64×)**, +1.6% ppl / KL 0.023 |
 tau 4 + int8 **18.13 (1.73×)**, +2.8% ppl. (Phase 8 without int8: 1.49× / 1.77× against a slower stock window.)
+
+## Phase 11 — the MLP in neuron space, and distillation (`phase_geo.py`, `runs/phase_geo*.jsonl`) — **fails the 30-layer budget**
+Fresh angle: stop partitioning the *input* space. Cluster tokens by **which neurons carry their output** (spherical
+k-means on per-token contribution profiles |hn_i|·|down_i|), give each cluster a static set of m exact neurons, and
+route to a cluster from u with a linear classifier (K·d MACs). The 6912-wide gate is never computed; per-token cost
+is K·d + 3·m·d vs 3·6912·d dense. The sub-norm RMS of a partial neuron set is corrected by the cluster's calibration
+coverage. Then distill the routed leaves (init = exact teacher rows) against the teacher's outputs. 410k calibration
+tokens, held-out 16k tokens; single-layer KL on 16 wiki + 8 chat windows. (Layer 2's run hit a network error.)
+
+**Probe — how locally predictable is y?** Held-out rel err of k-NN regression over 262k calibration tokens:
+
+| geometry | layer 15, k=1 / 16 / 64 | layer 25, k=1 / 16 / 64 |
+|---|---|---|
+| input u (cosine) | 0.92 / 0.55 / 0.59 | 1.11 / 0.68 / 0.70 |
+| gate pre-activations W_gate·u | 0.94 / 0.57 / 0.61 | 1.08 / 0.68 / 0.71 |
+| neuron contribution profile (needs the full MLP) | 0.84 / 0.52 / 0.55 | 1.07 / 0.67 / 0.67 |
+
+Even with 262k reference tokens and the ideal metric, neighbours explain only ~45% (layer 15) / ~33% (layer 25) of
+the output variance. Changing geometry (input → gate → neuron space) barely matters: **y is not locally constant at
+any data density we can afford**, which bounds every tree-with-leaf-constants design.
+
+**Routed static neuron subsets** (layer 15; layer 25 within ±0.03):
+
+| K clusters | m neurons | MLP MACs vs dense | router acc | rel err (cluster known) | routed | routed top-2 union |
+|---|---|---|---|---|---|---|
+| 1 | 1024 | 6.8× fewer | – | 0.676 | 0.676 | – |
+| 16 | 1024 | 6.7× | 87% | 0.445 | 0.455 | 0.333 |
+| 64 | 512 | 13.0× | 86% | 0.517 | 0.528 | 0.416 |
+| 64 | 1024 | 6.6× | 86% | 0.367 | 0.377 | 0.265 |
+| 64 | 2048 | 3.3× | 86% | 0.202 | 0.210 | 0.119 |
+| 256 | 2048 | 3.2× | 80% | 0.180 | 0.184 | 0.100 |
+| oracle per-token top-512 / 1024 / 2048 (needs the full gate) | | | | 0.051 / 0.014 / 0.003 | | |
+
+The router is not the problem (routed ≈ ceiling). Static subsets are: each cluster still needs ~2000 neurons for
+0.2 error, because which neurons fire is token-specific even within a cluster.
+
+**Single-layer KL** (wiki / chat; MLP removed: 0.060 / 0.047; phase-4 best tree, 68 MB: 0.038 / 0.042):
+
+| layer 15 | wiki KL | chat KL |
+|---|---|---|
+| routed exact K=16 m=1024 | 0.0142 | 0.0239 |
+| routed exact K=64 m=512 | 0.0173 | 0.0264 |
+| routed exact K=64 m=1024 | 0.0117 | 0.0198 |
+| routed exact K=256 m=1024 | 0.0105 | 0.0174 |
+| (layer 25) routed exact K=64 m=1024 | 0.0179 | 0.0179 |
+
+**Distillation** (leaves init from the exact rows, MSE to the teacher output, Adam + cosine, all clusters in parallel):
+
+| layer 15 | steps, lr | rel err before → after | wiki KL | chat KL | train time | storage if leaves are duplicated |
+|---|---|---|---|---|---|---|
+| K=1 m=1024 (narrow MLP) | 800, 3e-5 | 0.676 → 0.659 | 0.0242 | 0.0360 | 17 s | 7.5 MB |
+| K=1 m=1024 | 3200, 1e-3 | 0.676 → **0.488** | 0.0184 | 0.0318 | 67 s | 7.5 MB |
+| K=1 m=512 | 3200, 1e-3 | 0.827 → 0.626 | 0.0259 | 0.0394 | 37 s | 3.8 MB |
+| K=1 m=256 | 3200, 1e-3 | → 0.729 | 0.0329 | 0.0435 | 23 s | 1.9 MB |
+| K=16 m=512 | 3200, 1e-3 | 0.619 → 0.463 | 0.0161 | 0.0275 | 100 s | 60 MB |
+| K=64 m=1024 | 800, 3e-5 | 0.377 → 0.364 | 0.0114 | 0.0196 | 411 s | 480 MB |
+
+Verdict:
+- Neuron space is the right geometry. It is **3× better than input-space trees** at single-layer KL (0.012 vs 0.038)
+  and costs only index lists (exact subsets), versus 68 MB/layer. Distillation adds a real but modest gain
+  (rel err −25–30%).
+- It is still ~10× short of usable. The whole stack has a budget of ~0.02 KL; 30 layers at ≥0.01 each is ~0.3.
+  Matching the existing exact sparse MLP's quality (at the noise floor) needs top-2 unions of ~2000-neuron subsets:
+  ~2–3× fewer MACs, no better than the exact-gate sparse MLP (1.9×, lossless) and with scattered reads.
+- What would be needed for "radically fast" is a real training run (all layers jointly, KL to the teacher, billions
+  of tokens: the Q-Sparse / BitNet-a4.8 route), which is outside the minimal-adaptation constraint. Per-layer
+  local distillation plateaus because the missing energy lives in neurons the leaf does not have.

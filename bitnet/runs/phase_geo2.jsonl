@@ -1,0 +1,32 @@
+{"phase": 11, "event": "data", "layer": 15, "calib_tokens": 409600, "heldout_tokens": 16384, "F": 6912, "t": "18:31:49"}
+{"phase": 11, "stage": 0, "config": "float student, all neurons", "rel_err": 0.0025, "t": "18:31:50"}
+{"phase": 11, "stage": 1, "config": "oracle per-token top-256", "rel_err": 0.11711, "t": "18:31:50"}
+{"phase": 11, "stage": 1, "config": "oracle per-token top-512", "rel_err": 0.05069, "t": "18:31:50"}
+{"phase": 11, "stage": 1, "config": "oracle per-token top-1024", "rel_err": 0.0139, "t": "18:31:50"}
+{"phase": 11, "stage": 1, "config": "mean output (MLP removed)", "rel_err": 1.00437, "t": "18:31:50"}
+{"phase": 11, "stage": 2, "geometry": "input u (cosine)", "k1": 0.92464, "k16": 0.54982, "k64": 0.585, "t": "18:31:50"}
+{"phase": 11, "stage": 2, "geometry": "gate pre-activations g = W_gate u (cosine)", "k1": 0.94368, "k16": 0.57258, "k64": 0.60903, "t": "18:31:51"}
+{"phase": 11, "stage": 2, "geometry": "neuron contribution profile (cosine; needs the full MLP)", "k1": 0.8408, "k16": 0.52322, "k64": 0.54799, "t": "18:31:51"}
+{"phase": 11, "stage": 3, "K": 1, "m": 256, "router_acc": 1.0, "macs": 1968640, "mlp_speedup_macs": 26.96, "mean_coverage": 0.1832, "rel_err_ceiling": 0.91696, "rel_err_routed": 0.91696, "t": "18:31:52"}
+{"phase": 11, "stage": 3, "K": 1, "m": 512, "router_acc": 1.0, "macs": 3934720, "mlp_speedup_macs": 13.49, "mean_coverage": 0.279, "rel_err_ceiling": 0.82691, "rel_err_routed": 0.82691, "t": "18:31:52"}
+{"phase": 11, "stage": 3, "K": 1, "m": 1024, "router_acc": 1.0, "macs": 7866880, "mlp_speedup_macs": 6.75, "mean_coverage": 0.4153, "rel_err_ceiling": 0.67567, "rel_err_routed": 0.67567, "t": "18:31:52"}
+{"phase": 11, "stage": 3, "K": 16, "m": 256, "router_acc": 0.8756, "macs": 2007040, "mlp_speedup_macs": 26.45, "mean_coverage": 0.4009, "rel_err_ceiling": 0.7422, "rel_err_routed": 0.75037, "rel_err_routed_top2": 0.65917, "t": "18:31:53"}
+{"phase": 11, "stage": 3, "K": 16, "m": 512, "router_acc": 0.8756, "macs": 3973120, "mlp_speedup_macs": 13.36, "mean_coverage": 0.5205, "rel_err_ceiling": 0.60909, "rel_err_routed": 0.61902, "rel_err_routed_top2": 0.50803, "t": "18:31:53"}
+{"phase": 11, "stage": 3, "K": 16, "m": 1024, "router_acc": 0.8756, "macs": 7905280, "mlp_speedup_macs": 6.72, "mean_coverage": 0.6612, "rel_err_ceiling": 0.44509, "rel_err_routed": 0.45496, "rel_err_routed_top2": 0.333, "t": "18:31:53"}
+{"phase": 11, "stage": "kl", "config": "MLP removed (mean output)", "wiki_ppl": 15.4662, "wiki_kl": 0.06018, "wiki_top1": 0.8696, "chat_ppl": 4.672, "chat_kl": 0.04743, "chat_top1": 0.9059, "t": "18:31:58"}
+{"phase": 11, "stage": 4, "config": "distilled K=1 m=1024", "steps": 3200, "rel_err": 0.48782, "macs": 7866880, "MB_int8_if_leaves_duplicated": 7.5, "train_s": 67.3, "wiki_ppl": 14.1669, "wiki_kl": 0.01837, "wiki_top1": 0.9277, "chat_ppl": 4.6638, "chat_kl": 0.03183, "chat_top1": 0.9188, "t": "18:33:10"}
+{"phase": 11, "stage": 4, "config": "distilled K=1 m=512", "steps": 3200, "rel_err": 0.62602, "macs": 3934720, "MB_int8_if_leaves_duplicated": 3.8, "train_s": 37.1, "wiki_ppl": 14.1916, "wiki_kl": 0.02586, "wiki_top1": 0.9147, "chat_ppl": 4.6604, "chat_kl": 0.03937, "chat_top1": 0.9091, "t": "18:33:52"}
+{"phase": 11, "stage": 4, "config": "distilled K=1 m=256", "steps": 3200, "rel_err": 0.72942, "macs": 1968640, "MB_int8_if_leaves_duplicated": 1.9, "train_s": 23.0, "wiki_ppl": 14.2014, "wiki_kl": 0.0329, "wiki_top1": 0.9018, "chat_ppl": 4.6686, "chat_kl": 0.04349, "chat_top1": 0.906, "t": "18:34:19"}
+{"phase": 11, "stage": 4, "config": "distilled K=16 m=512", "steps": 3200, "rel_err": 0.4627, "macs": 3973120, "MB_int8_if_leaves_duplicated": 60.0, "train_s": 100.5, "wiki_ppl": 14.1699, "wiki_kl": 0.01613, "wiki_top1": 0.9327, "chat_ppl": 4.6559, "chat_kl": 0.0275, "chat_top1": 0.9268, "t": "18:36:04"}
+{"event": "done", "total_s": 310.9, "t": "18:36:04"}
+{"phase": 11, "event": "data", "layer": 15, "calib_tokens": 409600, "heldout_tokens": 16384, "F": 6912, "t": "18:36:43"}
+{"phase": 11, "stage": 0, "config": "float student, all neurons", "rel_err": 0.0025, "t": "18:36:43"}
+{"phase": 11, "stage": 1, "config": "oracle per-token top-1024", "rel_err": 0.0139, "t": "18:36:43"}
+{"phase": 11, "stage": 1, "config": "mean output (MLP removed)", "rel_err": 1.00437, "t": "18:36:43"}
+{"phase": 11, "stage": 2, "geometry": "input u (cosine)", "k1": 0.92464, "k16": 0.54982, "k64": 0.585, "t": "18:36:43"}
+{"phase": 11, "stage": 2, "geometry": "gate pre-activations g = W_gate u (cosine)", "k1": 0.94368, "k16": 0.57258, "k64": 0.60903, "t": "18:36:43"}
+{"phase": 11, "stage": 2, "geometry": "neuron contribution profile (cosine; needs the full MLP)", "k1": 0.8408, "k16": 0.52322, "k64": 0.54799, "t": "18:36:44"}
+{"phase": 11, "stage": 3, "K": 1, "m": 1024, "router_acc": 1.0, "macs": 7866880, "mlp_speedup_macs": 6.75, "mean_coverage": 0.4153, "rel_err_ceiling": 0.67567, "rel_err_routed": 0.67567, "t": "18:36:44"}
+{"phase": 11, "stage": "kl", "config": "MLP removed (mean output)", "wiki_ppl": 15.4662, "wiki_kl": 0.06018, "wiki_top1": 0.8696, "chat_ppl": 4.672, "chat_kl": 0.04743, "chat_top1": 0.9059, "t": "18:36:49"}
+{"phase": 11, "stage": 4, "config": "distilled K=1 m=1024", "steps": 3200, "rel_err": 0.54354, "macs": 7866880, "MB_int8_if_leaves_duplicated": 7.5, "train_s": 68.1, "wiki_ppl": 14.1607, "wiki_kl": 0.02108, "wiki_top1": 0.9222, "chat_ppl": 4.684, "chat_kl": 0.03594, "chat_top1": 0.9151, "t": "18:38:02"}
+{"event": "done", "total_s": 112.1, "t": "18:38:02"}
