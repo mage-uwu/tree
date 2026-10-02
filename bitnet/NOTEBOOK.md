@@ -349,3 +349,30 @@ however many trees are used.
 Why: the MLP input has **token-specific outlier dimensions** that dominate the gate. A static tree code is fitted to
 the average input metric and cannot follow them; a per-token partial sum can. Next: hybrid = exact partial sum over
 the outlier dims + trees fitted in the outlier-removed metric for the rest.
+
+**Hybrid (exact partial sum on outlier dims + residual trees) and all-layer results** (`runs/phase_hybrid.jsonl`;
+all-layer = full WikiText-2 test + 64 chat windows, base 13.92):
+
+| scope | scorer | m | trees | C | energy captured | MLP MACs | wiki KL | wiki ppl |
+|---|---|---|---|---|---|---|---|---|
+| layer 15 | hybrid | 256 | 32 | 2048 | 0.869 | 17.1M | 0.0025 | |
+| layer 15 | partial | 512 | – | 2048 | 0.879 | 17.7M | 0.0022 | |
+| layer 2 | hybrid | 256 | 32 | 2048 | 0.940 | 11.6M | 0.0047 | |
+| layer 2 | partial | 256 | – | 2048 | 0.948 | 10.4M | 0.0041 | |
+| all | exact gate (phase 5) | – | – | – | 1 | 27.5M | **0.0028** | 13.93 |
+| all | partial | 256 | – | 3072 | 0.957 | 17.6M | 0.026 | 14.04 |
+| all | partial | 512 | – | 2048 | 0.944 | 15.9M | 0.038 | 13.92 |
+| all | hybrid | 256 | 32 | 2048 | 0.933 | 15.3M | 0.055 | 13.95 |
+| all | hybrid | 128 | 32 | 2048 | 0.912 | 14.0M | 0.092 | 14.38 |
+| all | trees only | – | 32 | 2048 | 0.853 | 12.7M | 0.678 | 26.05 |
+
+**Verdict on salvaging the tree MLP:**
+1. Fitted leaf maps: dead (high rank). Tree-routed neuron selection: works per layer in mid/late layers, but **tree
+   scoring fails in early layers** and across the whole model (KL 0.68).
+2. Residual trees on top of an exact outlier partial sum add nothing over spending the same MACs on more exact
+   dims (all-layer: hybrid 0.055 vs partial 0.038 KL at ~15.5M MACs).
+3. Root cause: trees encode the *items* in an average query metric. That works when queries are well behaved
+   (RoPE'd attention queries, the normed final hidden state). The MLP input has **token-specific outlier
+   dimensions** that dominate the gate, so any static code is least accurate exactly where each token needs it.
+4. What does work for the MLP: exact gate (lossless at energy 0.99, 1.9× fewer MACs, in the engine), or the
+   per-token outlier partial sum as a cheaper, lossy selector (3.0× fewer MLP MACs at KL 0.026, +0.9% ppl).
