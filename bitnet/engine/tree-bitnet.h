@@ -10,6 +10,7 @@
 //   TREE_TAU=8           keep keys within TAU nats of the best tree score (+ first cell + TREE_RECENT newest); the
 //                        selection is the union over the query heads that share a kv head (each K/V row read once)
 //   TREE_RECENT=64
+//   TREE_KV8=1           exact pass reads the engine's own per-head int8 copies of K and V instead of the f16 cache
 //   TREE_CHUNK=512       keys per work item in decode attention (items = kv heads x chunks, spread over threads)
 //   TREE_STATS=1         print read fraction and per-op attention time at exit
 //   TREE_ALL=1           also use the ops for multi-token batches (prompt / perplexity); default: decode only
@@ -29,7 +30,7 @@ bool tree_bitnet_attn_enabled(int n_tokens);
 
 // encode the ubatch's post-RoPE keys k_cur [hd, n_head_kv, n_tokens] into tree codes at their KV-cache cells
 // (k_idxs: int64 cell indices). Returns a dummy tensor the attention op depends on.
-ggml_tensor * tree_bitnet_kenc(ggml_context * ctx, ggml_tensor * k_cur, ggml_tensor * k_idxs, int64_t kv_size, int il);
+ggml_tensor * tree_bitnet_kenc(ggml_context * ctx, ggml_tensor * k_cur, ggml_tensor * v_cur, ggml_tensor * k_idxs, int64_t kv_size, int il);
 
 // select+rescore attention for q_cur [hd, n_head, n_tokens]; k/v are the cache views, kq_mask the stock mask.
 // deps: tensors that must be computed first (key codes, cache stores). Returns [hd*n_head, n_tokens].

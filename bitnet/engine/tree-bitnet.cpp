@@ -486,7 +486,19 @@ ggml_tensor * tree_bitnet_head(ggml_context * ctx, ggml_tensor * h, ggml_tensor 
 
 
 // ------------------------------------------------------------------ select+rescore attention
-struct AttnLayer { std::vector<uint8_t> codes[16]; int64_t cap = 0; };   // per kv head: [block][S/2][32] nibble codes
+struct AttnLayer {
+    std::vector<uint8_t> codes[16];                  // per kv head: [block][S/2][32] nibble codes
+    std::vector<int8_t> k8[16], v8[16];              // TREE_KV8: per kv head int8 copies [cell][hd] (per-row absmax)
+    std::vector<float> ks[16], vs[16];               // ... and their per-row scales
+    int64_t cap = 0;
+};
+static bool kv8_on() { static const bool on = getenv("TREE_KV8") && atoi(getenv("TREE_KV8")) != 0; return on; }
+static inline void quant_row8(const float * x, int n, int8_t * q, float * scale) {
+    float amax = 0; for (int i = 0; i < n; i++) amax = std::max(amax, fabsf(x[i]));
+    const float s = amax > 0 ? 127.f / amax : 0.f;
+    for (int i = 0; i < n; i++) q[i] = (int8_t)lrintf(x[i] * s);
+    *scale = amax > 0 ? amax / 127.f : 0.f;
+}
 static AttnLayer g_attn[256];
 
 bool tree_bitnet_attn_enabled(int n_tokens) { const TreeCfg & c = cfg(); return c.attn && (n_tokens == 1 || c.all); }
@@ -522,6 +534,11 @@ static void op_kenc(ggml_tensor * dst, int ith, int nth, void * ud) {
         const float * kv = (const float *)((const char *)k->data + t * k->nb[2] + h * k->nb[1]);
         const int64_t cell = ((const int64_t *)idx->data)[t];
         if (cell >= A.cap) continue;
+        if (kv8_on()) {
+            const ggml_tensor * v = dst->src[2];
+            quant_row8(kv, hd, A.k8[h].data() + (size_t)cell * hd, &A.ks[h][cell]);
+            quant_row8((const float *)((const char *)v->data + t * v->nb[2] + h * v->nb[1]), hd, A.v8[h].data() + (size_t)cell * hd, &A.vs[h][cell]);
+        }
         memcpy(r.data(), kv, hd * sizeof(float));
         const float tiny = 1e-5f * sqrtf(dotf(kv, kv, hd));
         const size_t o = (size_t)il * c.aH + h;
@@ -540,15 +557,19 @@ static void op_kenc(ggml_tensor * dst, int ith, int nth, void * ud) {
     }
 }
 
-ggml_tensor * tree_bitnet_kenc(ggml_context * ctx, ggml_tensor * k_cur, ggml_tensor * k_idxs, int64_t kv_size, int il) {
+ggml_tensor * tree_bitnet_kenc(ggml_context * ctx, ggml_tensor * k_cur, ggml_tensor * v_cur, ggml_tensor * k_idxs, int64_t kv_size, int il) {
     const TreeCfg & c = cfg(); AttnLayer & A = g_attn[il];
     if (A.cap < kv_size) {                                               // graph build is single-threaded
         const int P = c.aS / 2; const int64_t nb = (kv_size + 31) / 32;
         for (int h = 0; h < c.aH; h++) A.codes[h].assign((size_t)nb * P * 32, 0);
+        if (kv8_on()) for (int h = 0; h < c.aH; h++) {
+            A.k8[h].assign((size_t)nb * 32 * c.ahd, 0); A.v8[h].assign((size_t)nb * 32 * c.ahd, 0);
+            A.ks[h].assign((size_t)nb * 32, 0.f); A.vs[h].assign((size_t)nb * 32, 0.f);
+        }
         A.cap = nb * 32;
     }
-    ggml_tensor * args[2] = {k_cur, k_idxs};
-    return ggml_custom_4d(ctx, GGML_TYPE_F32, 1, 1, 1, 1, args, 2, op_kenc, GGML_N_TASKS_MAX, (void *)(intptr_t)il);
+    ggml_tensor * args[3] = {k_cur, k_idxs, v_cur};
+    return ggml_custom_4d(ctx, GGML_TYPE_F32, 1, 1, 1, 1, args, 3, op_kenc, GGML_N_TASKS_MAX, (void *)(intptr_t)il);
 }
 
 // Decode attention runs as four ops so that a single token still spreads over all threads (5 kv heads alone
@@ -701,22 +722,35 @@ static void tsel_item(const AttnParams & ap, const TreeCfg & c, const ggml_tenso
     }
     // exact scores: one K row read serves all G query heads; V rows are prefetched here for the second pass
     const bool vtrans = Vt->ne[0] != hd;
+    const bool kv8 = kv8_on(); const AttnLayer & A = g_attn[ap.il];
     float mx[G]; for (int g = 0; g < G; g++) mx[g] = -INFINITY;
     for (int s2 = 0; s2 < ns; s2++) {
-        if (s2 + PFD < ns) {
+        if (kv8 && s2 + PFD < ns) {
+            const char * pk = (const char *)(A.k8[h].data() + (size_t)sel[s2 + PFD] * hd), * pv = (const char *)(A.v8[h].data() + (size_t)sel[s2 + PFD] * hd);
+            _mm_prefetch(pk, _MM_HINT_T0); _mm_prefetch(pk + 64, _MM_HINT_T0); _mm_prefetch(pv, _MM_HINT_T0); _mm_prefetch(pv + 64, _MM_HINT_T0);
+        } else if (s2 + PFD < ns) {
             const char * pk = (const char *)K->data + (size_t)sel[s2 + PFD] * K->nb[2] + h * K->nb[1];
             for (int o = 0; o < hd * 2; o += 64) _mm_prefetch(pk + o, _MM_HINT_T0);
             if (!vtrans) { const char * pv = (const char *)Vt->data + (size_t)sel[s2 + PFD] * Vt->nb[2] + h * Vt->nb[1]; for (int o = 0; o < hd * 2; o += 64) _mm_prefetch(pv + o, _MM_HINT_T0); }
         }
-        const ggml_fp16_t * kr = (const ggml_fp16_t *)((const char *)K->data + (size_t)sel[s2] * K->nb[2] + h * K->nb[1]);
         __m256 acc[G]; for (int g = 0; g < G; g++) acc[g] = _mm256_setzero_ps();
-        for (int i = 0; i < hd; i += 8) {
-            const __m256 kk = _mm256_cvtph_ps(_mm_loadu_si128((const __m128i *)(kr + i)));
-            for (int g = 0; g < G; g++) acc[g] = _mm256_fmadd_ps(_mm256_loadu_ps(qs[g] + i), kk, acc[g]);
+        float kscale = 1.f;
+        if (kv8) {
+            const int8_t * kr = A.k8[h].data() + (size_t)sel[s2] * hd; kscale = A.ks[h][sel[s2]];
+            for (int i = 0; i < hd; i += 8) {
+                const __m256 kk = _mm256_cvtepi32_ps(_mm256_cvtepi8_epi32(_mm_loadl_epi64((const __m128i *)(kr + i))));
+                for (int g = 0; g < G; g++) acc[g] = _mm256_fmadd_ps(_mm256_loadu_ps(qs[g] + i), kk, acc[g]);
+            }
+        } else {
+            const ggml_fp16_t * kr = (const ggml_fp16_t *)((const char *)K->data + (size_t)sel[s2] * K->nb[2] + h * K->nb[1]);
+            for (int i = 0; i < hd; i += 8) {
+                const __m256 kk = _mm256_cvtph_ps(_mm_loadu_si128((const __m128i *)(kr + i)));
+                for (int g = 0; g < G; g++) acc[g] = _mm256_fmadd_ps(_mm256_loadu_ps(qs[g] + i), kk, acc[g]);
+            }
         }
         for (int g = 0; g < G; g++) {
             __m128 r = _mm_add_ps(_mm256_castps256_ps128(acc[g]), _mm256_extractf128_ps(acc[g], 1)); r = _mm_hadd_ps(r, r); r = _mm_hadd_ps(r, r);
-            const float v = _mm_cvtss_f32(r); sc[(size_t)g * TCH + s2] = v; mx[g] = std::max(mx[g], v);
+            const float v = _mm_cvtss_f32(r) * kscale; sc[(size_t)g * TCH + s2] = v; mx[g] = std::max(mx[g], v);
         }
     }
     // softmax weights (in place), then values: 16 dims at a time with all G heads' accumulators in registers
@@ -730,7 +764,18 @@ static void tsel_item(const AttnParams & ap, const TreeCfg & c, const ggml_tenso
         __m128 r = _mm_add_ps(_mm256_castps256_ps128(vs), _mm256_extractf128_ps(vs, 1)); r = _mm_hadd_ps(r, r); r = _mm_hadd_ps(r, r);
         sum[g] = st + _mm_cvtss_f32(r);
     }
-    if (!vtrans) {
+    if (kv8) {
+        for (int i = 0; i < hd; i += 16) {
+            __m256 a0[G], a1[G]; for (int g = 0; g < G; g++) { a0[g] = _mm256_setzero_ps(); a1[g] = _mm256_setzero_ps(); }
+            for (int s2 = 0; s2 < ns; s2++) {
+                const int8_t * vv = A.v8[h].data() + (size_t)sel[s2] * hd + i; const float vsc = A.vs[h][sel[s2]];
+                const __m128i b = _mm_loadu_si128((const __m128i *)vv);
+                const __m256 v0 = _mm256_cvtepi32_ps(_mm256_cvtepi8_epi32(b)), v1 = _mm256_cvtepi32_ps(_mm256_cvtepi8_epi32(_mm_srli_si128(b, 8)));
+                for (int g = 0; g < G; g++) { const __m256 w = _mm256_set1_ps(sc[(size_t)g * TCH + s2] * vsc); a0[g] = _mm256_fmadd_ps(w, v0, a0[g]); a1[g] = _mm256_fmadd_ps(w, v1, a1[g]); }
+            }
+            for (int g = 0; g < G; g++) { float * o = out + g * (hd + 2) + 2 + i; _mm256_storeu_ps(o, a0[g]); _mm256_storeu_ps(o + 8, a1[g]); }
+        }
+    } else if (!vtrans) {
         for (int i = 0; i < hd; i += 16) {
             __m256 a0[G], a1[G]; for (int g = 0; g < G; g++) { a0[g] = _mm256_setzero_ps(); a1[g] = _mm256_setzero_ps(); }
             for (int s2 = 0; s2 < ns; s2++) {

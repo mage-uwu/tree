@@ -498,3 +498,35 @@ BitNet's attention/FFN inputs are near-Gaussian (the BitNet a4.8 paper says the 
 instead of sparsifying), so half the entries carry real energy. The only tolerant site is the down-projection input,
 which relu² already makes sparse and which the sparse exact MLP already exploits. Not worth a kernel (it would also
 need column-skipping over row-packed I2_S weights). Projections stay dense.
+
+## Phase 10 — int8 K/V copy for the exact pass, and 64 trees per key
+**int8 K/V (`TREE_KV8=1`).** The key-encoding op also writes per-row-absmax int8 copies of each key and value into
+per-kv-head contiguous arrays ([cell][128] int8 + f32 scale: 132 B/row at a 128 B stride, vs 256 B f16 rows at a
+1280 B stride in the stock cache). The select op reads those instead of the f16 cache. Extra memory 40 KB/token
+(≈360 MB at 9k context). KL vs stock (8 × 2048):
+
+| config | rows read | PPL ratio | KL |
+|---|---|---|---|
+| int8, tau 1000 (everything) | 100% | 1.0009 | **0.0026** (= noise floor: lossless) |
+| int8, tau 5 | 38.1% | 1.0056 | 0.0062 (f16: 0.0063) |
+| int8, tau 4 | 23.5% | 1.0166 | 0.0145 (f16: 0.0149) |
+
+Decode, 7479-token prompt, 128 tokens, 4 threads, same window: tau 5 12.68 → **14.23** tok/s (+12%);
+tau 4 14.56 → **15.78** (+8%); select+exact time −25%.
+
+**64 trees per key (32 B/key; `jobs/pk64.sh`, 18 min on a 3090).** Same quality per tau, fewer rows read:
+
+| trees, tau | rows read (2k) | PPL ratio | KL | rows read (7.5k) | tok/s (7.5k, int8) |
+|---|---|---|---|---|---|
+| 32, tau 5 | 38.1% | 1.0056 | 0.0062 | 57% | 14.86 |
+| 64, tau 5 | 32.0% | 1.0014 | 0.0061 | 35% | 14.43 |
+| 64, tau 4 | 19.9% | 1.0047 | 0.0139 | 20% | 14.95 |
+| 64, tau 3 | 12.3% | 1.0219 | 0.0338 | – | – |
+
+No net win: the exact pass shrinks but tables and fast-scan double (per token at 7.5k: tables 1.7 → 3.3 ms,
+scan 2.8 → 5.1 ms), so wall time is a wash at equal KL. Bits only pay once the scan/tables are cheaper (AVX-512
+scan, int8 leaves); keep S=32.
+
+**End to end, everything on, with int8** (7479-token prompt + 512 tokens, 4 threads, same window):
+stock fa=0 **10.47** | head + MLP + attention tau 5 + int8 **17.16 (1.64×)**, +1.6% ppl / KL 0.023 |
+tau 4 + int8 **18.13 (1.73×)**, +2.8% ppl. (Phase 8 without int8: 1.49× / 1.77× against a slower stock window.)

@@ -11,7 +11,7 @@ index 6448a8427..68de692eb 100644
              llama-arch.cpp
              llama-batch.cpp
 diff --git a/src/models/bitnet.cpp b/src/models/bitnet.cpp
-index 985c8d6fc..231b55ae4 100644
+index 985c8d6fc..4b5baed1f 100644
 --- a/src/models/bitnet.cpp
 +++ b/src/models/bitnet.cpp
 @@ -1,4 +1,6 @@
@@ -36,7 +36,7 @@ index 985c8d6fc..231b55ae4 100644
 +            if (arch == LLM_ARCH_BITNET_B158 && tree_bitnet_attn_enabled(1)) {
 +                // tree attention configured: keep the key codes up to date for every batch (prompt included)
 +                ggml_tensor * kview = inp_attn->mctx->get_k(ctx0, il);
-+                ggml_tensor * enc = tree_bitnet_kenc(ctx0, Kcur, inp_attn->get_k_idxs(), kview->view_src->ne[1], il);
++                ggml_tensor * enc = tree_bitnet_kenc(ctx0, Kcur, Vcur, inp_attn->get_k_idxs(), kview->view_src->ne[1], il);
 +                ggml_build_forward_expand(gf, enc);
 +                if (tree_bitnet_attn_enabled((int) Kcur->ne[2]) && !inp_attn->self_k_rot && !inp_attn->self_v_rot) {
 +                    ggml_build_forward_expand(gf, Qcur);

@@ -12,8 +12,9 @@ The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the
 - Tree attention is in the engine too (`TREE_ATTN=`, key file from `bitnet/export_key_trees.py`, needs `-fa on`):
   decode at a 7.5k-token prompt, 4 threads: tau 5 1.17× (+0.5% ppl), tau 4 1.35× (+1.6%); everything on
   (head + sparse MLP + attention) 1.49× at tau 5 (+1.6% ppl) / 1.77× at tau 4 (+2.8%). Notebook Phase 8.
-- Next: more bits per key (S=64) so tau can drop at equal quality; int8 K/V copy for the exact pass; AVX-512
-  fast-scan; per-layer tau; better sparse-MLP memory layout for multi-threaded decode.
+- `TREE_KV8=1` (int8 K/V copy, lossless) lifts everything-on tau 5 to 1.64×. 64 trees/key: fewer reads but no net
+  speed (scan/tables double); keep 32. TEAL-style input sparsity fails on BitNet (Phase 9). Notebook Phase 10.
+- Next: AVX-512 fast-scan and int8 leaves (would make 64 trees pay); per-layer tau; sparse-MLP memory layout.
 
 # Tree-BitNet handoff
 
