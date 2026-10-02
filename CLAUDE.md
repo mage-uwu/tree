@@ -1,3 +1,17 @@
+# STATUS (2026-10-02) — read this first
+The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the top), code in `bitnet/`.
+- Harness: `bitnet/common.py` hooks the real HF model (RoPE wrapper, MLP hooks, custom `tree` attention, KL eval).
+- What survived at 2B scale: **select+rescore attention** (trees choose keys, exact keys score them),
+  **sparse exact MLP** (exact gate, per-token relu(g)² energy coverage), **tree output layer** (vocab codes,
+  exact rescoring of top-N). What failed: tree MLP with fitted leaf maps (MLP is high-rank), key *replacement*.
+- Engine: `bitnet/engine/` — ops for bitnet.cpp (`tree-bitnet.cpp`, `bitnet_tree.patch` against bitnet.cpp
+  0b341e5's llama.cpp submodule; also fixes stock's SiLU-instead-of-relu² bug). Head + sparse MLP: 1.97× decode
+  (1 thread), 1.44× (4 threads) at +1.0% ppl. Vocab tree file: `bitnet/export_vocab_trees.py` (GPU, ~1 min).
+- GPU work runs as one-shot RunPod jobs: `bitnet/pod_boot.sh` (base64 start command) + `bitnet/jobs/<JOB>.sh`;
+  results served read-only on port 8888. Do not use a remote exec server (blocked by policy).
+- Next: select+rescore attention in the engine (long context: stock is 7.9 tok/s at 8k); per-layer tau_sel;
+  better sparse-MLP memory layout for multi-threaded decode.
+
 # Tree-BitNet handoff
 
 **Mission for this session:** run the tree conversion on a real BitNet b1.58 model at scale (`microsoft/bitnet-b1.58-2B-4T`) and measure quality and CPU speed. Everything below was proven only on a tiny 4-layer char-level BitNet transformer (d=128, TinyShakespeare). Treat the tiny results as a working recipe plus a list of traps, not as evidence it scales.

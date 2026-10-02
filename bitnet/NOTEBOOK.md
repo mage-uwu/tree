@@ -1,5 +1,18 @@
 # Tree-BitNet at scale: microsoft/bitnet-b1.58-2B-4T (lab notebook)
 
+## Summary (2026-10-02)
+| piece | verdict | quality (WikiText-2, base 13.92) | speed |
+|---|---|---|---|
+| tree MLP (leaf tables, shared subspace) | **fails** — the MLP is high-rank at d=2560 | 68 MB/layer recovers 1/3 of the KL of deleting the MLP | – |
+| key trees *replacing* keys | **fails at 30 layers** | 32 B/key: ppl 16.09 (+16%) | – |
+| key trees *selecting* keys + exact rescoring | works | at floor, reads 56% of KV (tau 8); KL 0.017 at 10% (tau 4) | not in engine yet (long-context win) |
+| sparse *exact* MLP (exact gate, per-token energy 0.99) | works, lossless | KL at floor, 1916 / 6912 neurons | 1.19× / 1.10× decode (1 / 4 threads) |
+| tree output layer (128 vocab trees, 8192 exact) | works | +1.0% ppl, 99.96% top-1 | 1.51× / 1.21× decode |
+| **head + sparse MLP in bitnet.cpp** | | **+1.0% ppl (engine)** | **1.97× / 1.68× / 1.44× decode at 1 / 2 / 4 threads** |
+| all three (PyTorch) | | 14.06 (+1.0%), KL 0.017 | |
+
+Also found: stock bitnet.cpp HEAD runs 2B-4T with SiLU instead of relu² (PPL 91 → 13.1 fixed).
+
 Code: `bitnet/` (harness `common.py`, key trees `keytrees.py`, tree MLP `treemlp.py`, phases `phase*.py`).
 Compute: RunPod RTX 3090 (community, $0.22/h), one-shot jobs via `pod_boot.sh` + `jobs/*.sh`, results in `runs/`.
 
@@ -252,6 +265,7 @@ MLP: energy 0.99; head: 128 vocab trees, N=8192; each converted against the base
 | MLP | 13.93 | 0.0028 | 0.971 | 0.0021 | 1916 neurons |
 | head | 14.08 | 0.0142 | **0.9996** | 0.0157 | |
 | attention + MLP | 13.92 | 0.0031 | 0.970 | 0.0023 | errors do not stack beyond the floor |
+| **attention + MLP + head** | **14.06 (+1.0%)** | 0.0171 | 0.969 | 0.0198 | rerun (`runs/phase6b.jsonl`); KL ≈ head + floor |
 
 ## Phase 7 — inside bitnet.cpp (end to end, this machine)
 `engine/tree-bitnet.{h,cpp}` + `engine/bitnet_tree.patch` (llama.cpp submodule of bitnet.cpp 0b341e5; the patch also
