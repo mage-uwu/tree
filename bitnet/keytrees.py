@@ -85,7 +85,12 @@ class KeyTrees(nn.Module):
                 if len(idx) >= 2:
                     Xs = R[idx]; Xc = Xs - Xs.mean(0)
                     if Xc.norm(dim=1).max() >= tol:
-                        w = torch.linalg.eigh((Xc.T @ Xc).double())[1][:, -1].float()
+                        if hd <= 512:
+                            w = torch.linalg.eigh((Xc.T @ Xc).double())[1][:, -1].float()
+                        else:                                   # wide (vocab embeddings): power iteration
+                            w = Xc[torch.randint(len(Xc), (1,), device=R.device)][0]
+                            for _ in range(12):
+                                w = Xc.T @ (Xc @ w); w = w / w.norm().clamp(min=1e-12)
                         p = (Xs @ w).sort().values; n = len(p)
                         i0 = int(BAND[0] * (n - 1)); i1 = max(int(BAND[1] * (n - 1)), i0 + 1)
                         gaps = p[i0 + 1:i1 + 1] - p[i0:i1]

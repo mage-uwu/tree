@@ -1,0 +1,2 @@
+{"phase": 3, "mode": "select+rescore", "tau_sel": 8.0, "S": 32, "D": 4, "exact_sink": true, "bytes_per_key_per_kvhead": 16.0, "kv_cache_key_bytes_per_token": 2400, "fp16_key_bytes_per_token": 38400, "fit_s": 1969.6, "wiki_ppl": 13.9006, "wiki_kl": 0.00282, "wiki_top1": 0.9707, "chat_ppl": 4.566, "chat_kl": 0.0021, "chat_top1": 0.9798, "read_frac_mean": 0.5639, "t": "02:21:53"}
+{"event": "done", "total_s": 2208.4, "t": "02:21:53"}
