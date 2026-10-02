@@ -5,7 +5,8 @@ export DEBIAN_FRONTEND=noninteractive GIT_TERMINAL_PROMPT=0 PYTHONUNBUFFERED=1
 mkdir -p /root/out; exec > >(tee -a /root/out/run.log) 2>&1
 (cd /root/out && nohup python3 -m http.server 8888 >/dev/null 2>&1 &)
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
-python3 -m pip install -q "transformers==5.18.0" accelerate pyarrow 2>&1 | tail -1
+curl -sS -o /dev/null -w "pypi %{http_code} %{time_total}s\n" https://pypi.org/simple/transformers/
+for i in 1 2 3; do timeout 900 python3 -m pip install --progress-bar off --default-timeout 60 "transformers==5.18.0" accelerate pyarrow 2>&1 | grep -E "^(Collecting|Successfully|ERROR)" && break; echo "pip retry $i"; done
 python3 -c "import torch; print('torch', torch.__version__, torch.cuda.is_available())"
 cd /root && for i in 1 2 3 4 5; do rm -rf tree; git clone -q -b ${BRANCH:-claude/amazing-albattani-kor49n} https://github.com/mage-uwu/tree.git && break; sleep $((i*5)); done
 cd /root/tree && git log --oneline -1 && cd bitnet
