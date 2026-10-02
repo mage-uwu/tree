@@ -9,8 +9,11 @@ The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the
   (1 thread), 1.44× (4 threads) at +1.0% ppl. Vocab tree file: `bitnet/export_vocab_trees.py` (GPU, ~1 min).
 - GPU work runs as one-shot RunPod jobs: `bitnet/pod_boot.sh` (base64 start command) + `bitnet/jobs/<JOB>.sh`;
   results served read-only on port 8888. Do not use a remote exec server (blocked by policy).
-- Next: select+rescore attention in the engine (long context: stock is 7.9 tok/s at 8k); per-layer tau_sel;
-  better sparse-MLP memory layout for multi-threaded decode.
+- Tree attention is in the engine too (`TREE_ATTN=`, key file from `bitnet/export_key_trees.py`, needs `-fa on`):
+  decode at a 7.5k-token prompt, 4 threads: tau 5 1.17× (+0.5% ppl), tau 4 1.35× (+1.6%); everything on
+  (head + sparse MLP + attention) 1.49× at tau 5 (+1.6% ppl) / 1.77× at tau 4 (+2.8%). Notebook Phase 8.
+- Next: more bits per key (S=64) so tau can drop at equal quality; int8 K/V copy for the exact pass; AVX-512
+  fast-scan; per-layer tau; better sparse-MLP memory layout for multi-threaded decode.
 
 # Tree-BitNet handoff
 

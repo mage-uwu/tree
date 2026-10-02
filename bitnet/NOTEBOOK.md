@@ -5,11 +5,12 @@
 |---|---|---|---|
 | tree MLP (leaf tables, shared subspace) | **fails** — the MLP is high-rank at d=2560 | 68 MB/layer recovers 1/3 of the KL of deleting the MLP | – |
 | key trees *replacing* keys | **fails at 30 layers** | 32 B/key: ppl 16.09 (+16%) | – |
-| key trees *selecting* keys + exact rescoring | works | at floor, reads 56% of KV (tau 8); KL 0.0046 at 27% (tau 6); 0.017 at 10% (tau 4) | not in engine yet (long-context win) |
+| key trees *selecting* keys + exact rescoring | works | engine: +0.5% ppl / KL 0.0063 (tau 5); +1.6% / 0.015 (tau 4) | in engine: 1.17× (tau 5) / 1.35× (tau 4) decode at 7.5k ctx, 4 threads |
 | sparse *exact* MLP (exact gate, per-token energy 0.99) | works, lossless | KL at floor, 1916 / 6912 neurons | 1.19× / 1.10× decode (1 / 4 threads) |
 | tree output layer (128 vocab trees, 8192 exact) | works | +1.0% ppl, 99.96% top-1 | 1.51× / 1.21× decode |
 | **head + sparse MLP in bitnet.cpp** | | **+1.0% ppl (engine)** | **1.97× / 1.68× / 1.44× decode at 1 / 2 / 4 threads** |
 | all three (PyTorch) | | 14.06 (+1.0%), KL 0.017 | |
+| **all three in bitnet.cpp, 7.5k context** | | +1.6% ppl, KL 0.023 (tau 5); +2.8% (tau 4) | **1.49× (tau 5) / 1.77× (tau 4) decode, 4 threads** |
 
 Also found: stock bitnet.cpp HEAD runs 2B-4T with SiLU instead of relu² (PPL 91 → 13.1 fixed).
 
@@ -414,3 +415,64 @@ Engine ppl (3 chunks, stock 13.717): partial alone 14.206 (+3.6%), head + partia
 exact gate 13.856 (+1.0%). Gathering 3072 scattered gate rows plus the 256-row transposed pass costs about as much as
 stock's streaming dense gate kernel, so the MAC savings do not show up as time, and the quality cost is real.
 **Best configuration stays: tree output layer + exact-gate sparse MLP.**
+
+## Phase 8 — tree attention inside bitnet.cpp (`TREE_ATTN=key_trees_S32.bin`, 32 trees × 4 bits = 16 B/key)
+Keys are encoded into nibble codes as they enter the KV cache (`op_kenc`, every batch). Decode attention replaces
+stock flash attention with four ops (all threads busy even for one token, interleaved work items):
+1. `op_ttab` per (token, q head): leaf tables q·leaf (f16 leaves), 16-bit two-plane quantization.
+2. `op_tscan` per (token, q head, 512-key chunk): pshufb fast-scan, stock mask added as -inf, chunk max.
+3. `op_tsel` per (token, kv head, chunk): keep keys within tau of the head's best tree score, plus the first cell
+   and the 64 newest, **union over the 4 query heads of the GQA group**, so each K/V row is read once per kv head.
+   Then exact f16 scores for all 4 heads, a vector exp, and V accumulated in registers. Partial softmax per chunk.
+4. `op_tmerge`: combine the chunk partials.
+
+Correctness: tau=1000 (everything selected) gives ppl 13.7152 vs stock 13.717; the select/exact op matches a
+scalar re-implementation of the old per-head algorithm to 5e-6 relative. (3-chunk ppl moves ±0.7% between
+equivalent selection variants from rounding chaos, so quality below is KL on 8 × 2048 windows.)
+
+Quality vs stock logits (`llama-perplexity --kl-divergence`, WikiText-2, 8 chunks of 2048, TREE_ALL=1):
+
+| tau | KV rows read (2k ctx, union) | PPL ratio | mean KL | same top-1 |
+|---|---|---|---|---|
+| 3 | 13.8% | 1.0445 | 0.0374 | 91.0% |
+| 4 | 23.5% | 1.0158 | 0.0149 | 94.2% |
+| 5 | 38.0% | 1.0050 | 0.0063 | 96.3% |
+| 6 | 55.5% | 1.0019 | 0.0033 | 97.0% |
+(noise floor of any non-bit-exact change ≈ 0.0026 KL)
+
+Decode on real text (`llama-completion`, 7479-token WikiText prompt, 4 threads, tok/s; 128 generated tokens unless
+noted). Stock on this prompt: fa=0 **10.70**, fa=1 8.83; depth-0 decode 20.7.
+
+| tau | rows read at 7.5k | tok/s | vs stock fa=0 |
+|---|---|---|---|
+| 3 | 15.0% | 15.59 | 1.46× |
+| 4 | 32.0% | 14.34–14.54 | 1.35× |
+| 5 | 56.0% | 12.49 | 1.17× |
+| 6 | 74.3% | 10.56 | 0.99× |
+| (llama-bench random tokens, d8192, tau 4) | 46% | 8.99 | 0.92× (stock fa=0 9.72) |
+
+Per-token attention op time at tau 3 (7.5k): tables 1.8 ms, scan 3.3 ms, select+exact 8.3 ms; total decode overhead over
+depth 0 ≈ 16–19 ms vs ≈ 45 ms for stock attention. Lessons from getting there:
+- The first version (one op per (token, q head), K/V re-read per q head, V accumulators in memory) was *slower* than
+  stock at 8k (7.6 vs 9.7 tok/s). Grouping by kv head + register accumulation + chunked items: 10.45 → 12.98 → 14.5.
+- Selected rows are random 256 B reads at 1280 B stride; they move at ~9 GB/s vs ~14 GB/s for stock's streaming, so
+  reading 32% of the cache costs about half the stock time, not a third. Prefetch distance (4–16) made no difference.
+- GQA hurts: per q head tau 4 selects 13% of keys but the union over the 4 heads of a group is 32%.
+- The read fraction grows with context at fixed tau (tau 6: 55% at 2k, 74% at 7.5k), so the near-lossless setting
+  (tau 6) is no faster than stock. The model's trained context is 4096, which caps how much attention can matter.
+
+**End to end, everything on** (7479-token prompt + 512 generated, 4 threads, same session; stock repeated at
+start and end because this VM's speed drifts):
+
+| config | tok/s | vs stock | quality (8×2048 KL run) |
+|---|---|---|---|
+| stock fa=0 | 9.42 / 9.73 | 1.00× | – |
+| tree attention tau 5 | 11.64 | 1.22× | +0.5% ppl, KL 0.0063 |
+| head 8192 + MLP 0.99 (fa=0) | 11.28 | 1.18× | +1.0% ppl |
+| **head + MLP + tree attention tau 5** | **14.31** | **1.49×** | +1.6% ppl, KL 0.023, top-1 96.2% |
+| **head + MLP + tree attention tau 4** | **16.95** | **1.77×** | +2.8% ppl, KL 0.032, top-1 94.4% |
+
+Verdict: tree attention works inside the engine and halves attention time at long context, but at near-lossless
+settings it is only 1.2× end to end on this 4k-context model; 1.5–1.8× needs everything on and +1.6–2.8% ppl.
+Next levers, in order: more bits per key (S=64 would let tau drop at equal quality, at 2× scan/table cost), an int8
+copy of K/V for the exact pass (half the random bytes), AVX-512 fast-scan (64 keys per shuffle).
