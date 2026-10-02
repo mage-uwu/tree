@@ -7,8 +7,11 @@
 //   TREE_HEAD=path.bin   tree output layer (file from bitnet/export_vocab_trees.py)
 //   TREE_HEAD_N=8192     exact candidates per token
 //   TREE_ATTN=path.bin   select+rescore attention (file from bitnet/export_key_trees.py)
-//   TREE_TAU=8           keep keys within TAU nats of the best tree score (+ first cell + TREE_RECENT newest)
+//   TREE_TAU=8           keep keys within TAU nats of the best tree score (+ first cell + TREE_RECENT newest); the
+//                        selection is the union over the query heads that share a kv head (each K/V row read once)
 //   TREE_RECENT=64
+//   TREE_CHUNK=512       keys per work item in decode attention (items = kv heads x chunks, spread over threads)
+//   TREE_STATS=1         print read fraction and per-op attention time at exit
 //   TREE_ALL=1           also use the ops for multi-token batches (prompt / perplexity); default: decode only
 #pragma once
 #include "ggml.h"
