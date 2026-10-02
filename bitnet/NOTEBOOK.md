@@ -5,7 +5,7 @@
 |---|---|---|---|
 | tree MLP (leaf tables, shared subspace) | **fails** — the MLP is high-rank at d=2560 | 68 MB/layer recovers 1/3 of the KL of deleting the MLP | – |
 | key trees *replacing* keys | **fails at 30 layers** | 32 B/key: ppl 16.09 (+16%) | – |
-| key trees *selecting* keys + exact rescoring | works | at floor, reads 56% of KV (tau 8); KL 0.017 at 10% (tau 4) | not in engine yet (long-context win) |
+| key trees *selecting* keys + exact rescoring | works | at floor, reads 56% of KV (tau 8); KL 0.0046 at 27% (tau 6); 0.017 at 10% (tau 4) | not in engine yet (long-context win) |
 | sparse *exact* MLP (exact gate, per-token energy 0.99) | works, lossless | KL at floor, 1916 / 6912 neurons | 1.19× / 1.10× decode (1 / 4 threads) |
 | tree output layer (128 vocab trees, 8192 exact) | works | +1.0% ppl, 99.96% top-1 | 1.51× / 1.21× decode |
 | **head + sparse MLP in bitnet.cpp** | | **+1.0% ppl (engine)** | **1.97× / 1.68× / 1.44× decode at 1 / 2 / 4 threads** |
@@ -266,6 +266,8 @@ MLP: energy 0.99; head: 128 vocab trees, N=8192; each converted against the base
 | head | 14.08 | 0.0142 | **0.9996** | 0.0157 | |
 | attention + MLP | 13.92 | 0.0031 | 0.970 | 0.0023 | errors do not stack beyond the floor |
 | **attention + MLP + head** | **14.06 (+1.0%)** | 0.0171 | 0.969 | 0.0198 | rerun (`runs/phase6b.jsonl`); KL ≈ head + floor |
+| attention tau_sel=6 | 13.85 | 0.0046 | 0.963 | 0.0029 | **27% of KV read** |
+| attention tau 6 + MLP 0.98 + head | 14.02 (+0.7%) | 0.0193 | 0.958 | 0.0184 | 27% KV, 1711 neurons |
 
 ## Phase 7 — inside bitnet.cpp (end to end, this machine)
 `engine/tree-bitnet.{h,cpp}` + `engine/bitnet_tree.patch` (llama.cpp submodule of bitnet.cpp 0b341e5; the patch also
