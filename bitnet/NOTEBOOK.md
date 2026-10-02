@@ -310,3 +310,42 @@ neurons into a private slot; a second op sums 16 slots). Sparse MLP alone, frac 
 
 Engine ppl (3 chunks, stock 13.717): head 8192 + MLP 0.99 = **13.856 (+1.0%)** (same as head alone — the sparse MLP
 costs nothing measurable); head 4096 + MLP 0.98 = 14.209 (+3.6%).
+
+## Salvaging the tree MLP: trees that *route*, not trees that *approximate* (`phase_treegate.py`)
+Lesson from keys and vocab: trees fail when they replace a high-rank function, and work when they select items
+that are then computed exactly. The MLP has the same structure: relu² leaves ~1900 of 6912 neurons doing the work
+per token, and finding them is a max-inner-product search over the gate rows (g_i = w_i·x). So: encode the 6912
+ternary gate rows with boosted trees (input metric), score all neurons by table lookup, take the top C,
+compute gate/up/down exactly for those (energy rule 0.99 among candidates). MACs are per token per layer
+(dense MLP 53.1M; exact-gate sparse MLP = F·d + 2k·d).
+
+**Tree scorer, per layer** (eval 32 wiki + 16 chat windows; `runs/phase_treegate.jsonl`):
+
+| layer | scorer | C | energy captured | MLP MACs | wiki KL |
+|---|---|---|---|---|---|
+| 15 | exact gate | all | 1.000 | 32.9M | 0.0014 |
+| 15 | 64 trees (gate corr 0.87) | 3072 | 0.935 | 22.0M | 0.0021 |
+| 15 | 32 trees | 3072 | 0.911 | 20.1M | 0.0031 |
+| 2 | exact gate | all | 1.000 | 22.2M | 0.0023 |
+| 2 | 64 trees | 3072 | **0.772** | 12.7M | **0.053** |
+| 28 | exact gate | all | 1.000 | 26.0M | 0.0005 |
+| 28 | 64 trees | 3072 | 0.971 | 17.7M | 0.0015 |
+| all | 32 trees, C=2048 | | 0.853 | 12.7M | **0.678 (ppl 26.1)** |
+
+→ Tree-only scoring **fails across all layers**: in early layers the trees capture only ~70% of the gate energy
+however many trees are used.
+
+**Partial-input exact sum** (score = exact ternary sum over the m largest-|x| input dims, per token;
+`runs/phase_partial.jsonl`) beats the trees everywhere:
+
+| layer | m | C | energy captured | MLP MACs | wiki KL |
+|---|---|---|---|---|---|
+| 15 | 256 | 3072 | 0.924 | 20.8M | 0.0020 |
+| 15 | 512 | 2048 | 0.879 | 17.7M | 0.0022 |
+| 15 | 1024 | 3072 | 0.981 | 28.0M | 0.0015 |
+| 2 | 256 | 2048 | 0.948 | 10.4M | 0.0041 |
+| 2 | 512 | 3072 | 0.981 | 15.3M | 0.0028 |
+
+Why: the MLP input has **token-specific outlier dimensions** that dominate the gate. A static tree code is fitted to
+the average input metric and cannot follow them; a per-token partial sum can. Next: hybrid = exact partial sum over
+the outlier dims + trees fitted in the outlier-removed metric for the rest.
