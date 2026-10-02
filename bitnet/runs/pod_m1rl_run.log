@@ -1,0 +1,33 @@
+NVIDIA GeForce RTX 3090, 24576 MiB, 580.65.06
+pypi 200 0.206302s
+Collecting transformers==5.18.0
+Collecting accelerate
+Collecting pyarrow
+Collecting huggingface-hub<3.0,>=1.31.0 (from transformers==5.18.0)
+Collecting regex>=2025.10.22 (from transformers==5.18.0)
+Collecting tokenizers<0.24.0,>=0.23.1 (from transformers==5.18.0)
+Collecting typer (from transformers==5.18.0)
+Collecting safetensors>=0.8.0 (from transformers==5.18.0)
+Collecting tqdm>=4.60 (from transformers==5.18.0)
+Collecting click<9.0.0,>=8.4.2 (from huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting hf-xet<2.0.0,>=1.6.0 (from huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting httpx2<3,>=2.0.0 (from huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting httpcore2==2.13.1 (from httpx2<3,>=2.0.0->huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting idna>=3.18 (from httpx2<3,>=2.0.0->huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting truststore>=0.10 (from httpx2<3,>=2.0.0->huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting huggingface-hub<3.0,>=1.31.0 (from transformers==5.18.0)
+Collecting shellingham>=1.3.0 (from typer->transformers==5.18.0)
+Collecting rich>=13.8.0 (from typer->transformers==5.18.0)
+Collecting annotated-doc>=0.0.2 (from typer->transformers==5.18.0)
+Collecting markdown-it-py>=2.2.0 (from rich>=13.8.0->typer->transformers==5.18.0)
+Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=13.8.0->typer->transformers==5.18.0)
+Successfully installed accelerate-1.15.0 annotated-doc-0.0.5 click-8.5.0 hf-xet-1.6.0 huggingface-hub-1.33.0 idna-3.20 markdown-it-py-4.2.0 mdurl-0.1.2 pyarrow-25.0.1 regex-2026.9.29 rich-15.0.0 safetensors-0.8.0 shellingham-1.5.4 tokenizers-0.23.2 tqdm-4.70.1 transformers-5.18.0 typer-0.27.2
+torch 2.8.0+cu128 True
+310e77a notebook + runs: phase 4 negative result (tree MLP is high-rank at d=2560); sparsity finding
+=== p3s.sh START 01:50:39
+[transformers] You have loaded a BitNet model on CPU and have a CUDA device available, make sure to set your model on a GPU device in order to run your model.
+Loading weights:   0%|          | 0/332 [00:00<?, ?it/s]Loading weights: 100%|██████████| 332/332 [00:00<00:00, 9362.60it/s]
+{"phase": 3, "mode": "select+rescore", "tau_sel": 4.0, "S": 16, "D": 4, "exact_sink": true, "bytes_per_key_per_kvhead": 8.0, "kv_cache_key_bytes_per_token": 1200, "fp16_key_bytes_per_token": 38400, "fit_s": 1639.6, "wiki_ppl": 13.9807, "wiki_kl": 0.0386, "wiki_top1": 0.9079, "chat_ppl": 4.5869, "chat_kl": 0.01666, "chat_top1": 0.9503, "read_frac_mean": 0.1235, "t": "02:22:01"}
+{"phase": 3, "mode": "select+rescore", "tau_sel": 4.0, "S": 32, "D": 4, "exact_sink": true, "bytes_per_key_per_kvhead": 16.0, "kv_cache_key_bytes_per_token": 2400, "fp16_key_bytes_per_token": 38400, "fit_s": 1985.0, "wiki_ppl": 13.8116, "wiki_kl": 0.01727, "wiki_top1": 0.931, "chat_ppl": 4.5614, "chat_kl": 0.00888, "chat_top1": 0.9594, "read_frac_mean": 0.0989, "t": "02:58:50"}
+{"event": "done", "total_s": 4087.6, "t": "02:58:50"}
+=== ALL DONE 02:58:52

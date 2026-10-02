@@ -216,3 +216,39 @@ degenerate (median cluster 4–5 tokens, largest 17–28k), best top-1 agreement
   software prefetch for gathered rows; noisy VM, ranges over runs): dense MLP 0.95–1.2 ms; exact gate alone
   0.30–0.39 ms; sparse k=1024 **1.8–2.2× faster**, k=1536 **1.6–1.75×**. Gathered rows cost more per row than
   streamed ones; the dense gate is ~55% of the sparse path, so gate-based selection caps the MLP at ~3×.
+
+## Phase 3 — keys, all 30 layers (sequential calibration; full WikiText-2 test + 64 chat windows; base wiki 13.92)
+Floor for the custom fp32 attention path on all layers: KL ≈ 0.0026.
+
+| mode | trees (B/key/kv-head) | wiki ppl | wiki KL | chat KL | keys+values read |
+|---|---|---|---|---|---|
+| replace (k̂ scores) | 64 (32) | **16.09** | **0.174** | 0.180 | 100% |
+| select+rescore, tau_sel=8 | 32 (16) | 13.90 | **0.0028** | 0.0021 | **56%** |
+| select+rescore, tau_sel=4 | 32 (16) | 13.81 | 0.0173 | 0.0089 | 9.9% |
+| select+rescore, tau_sel=4 | 16 (8) | 13.98 | 0.0386 | 0.0167 | 12.4% |
+
+- **Replacing keys with tree reconstructions fails at scale** (+16% ppl even at 32 B/key): per-layer errors add up.
+- **Select + rescore at tau_sel=8 is at the noise floor** while reading 56% of the KV cache; tau_sel=4 reads ~10%
+  for KL 0.017. Per-layer tau (looser early layers) is the obvious next refinement.
+
+## Phase 5 — sparse exact MLP, all 30 layers (`runs/pod_yg2e_phase5.jsonl`; MLP-path floor = 0)
+| selector | mean neurons / 6912 | MLP MACs | wiki ppl | wiki KL | chat KL |
+|---|---|---|---|---|---|
+| per-token energy coverage 0.995 of relu(g)² | 2085 | 28.4M | 13.92 | 0.0026 | 0.0020 |
+| energy 0.99 | 1916 | 27.5M | 13.93 | 0.0028 | 0.0021 |
+| energy 0.98 | 1709 | 26.4M | 13.94 | 0.0035 | 0.0029 |
+| fixed top-2048 by relu(g) | 2048 | 28.2M | 13.73 | 0.0186 | 0.0149 |
+| fixed top-1536 | 1536 | 25.6M | 13.72 | 0.0369 | 0.0288 |
+| dense | 6912 | 53.1M | 13.92 | 0 | 0 |
+
+**Adaptive per-token k is far better than fixed k** (energy 0.98 with 1709 neurons on average: KL 0.0035 vs fixed
+2048: 0.0186) — some tokens need many neurons, most need few. Energy 0.99 is at the noise floor.
+
+## Phase 6 — all pieces together (`runs/phase6.jsonl`; attention: select+rescore 32 trees tau_sel=8;
+MLP: energy 0.99; head: 128 vocab trees, N=8192; each converted against the base model, then plugged)
+| combo | wiki ppl | wiki KL | wiki top-1 | chat KL | notes |
+|---|---|---|---|---|---|
+| attention | 13.90 | 0.0028 | 0.971 | 0.0021 | 56% of KV read |
+| MLP | 13.93 | 0.0028 | 0.971 | 0.0021 | 1916 neurons |
+| head | 14.08 | 0.0142 | **0.9996** | 0.0157 | |
+| attention + MLP | 13.92 | 0.0031 | 0.970 | 0.0023 | errors do not stack beyond the floor |

@@ -1,0 +1,6 @@
+{"phase": 5, "config": "gatee:0.995", "attn": "exact", "mlp_macs": 28369408, "dense_mlp_macs": 53084160, "wiki_ppl": 13.923, "wiki_kl": 0.00259, "wiki_top1": 0.9712, "chat_ppl": 4.5664, "chat_kl": 0.00196, "chat_top1": 0.9801, "mean_k": 2084.9, "t": "02:44:09"}
+{"phase": 5, "config": "gatee:0.99", "attn": "exact", "mlp_macs": 27503104, "dense_mlp_macs": 53084160, "wiki_ppl": 13.9342, "wiki_kl": 0.00277, "wiki_top1": 0.9706, "chat_ppl": 4.5705, "chat_kl": 0.00212, "chat_top1": 0.9796, "mean_k": 1915.7, "t": "02:46:45"}
+{"phase": 5, "config": "gatee:0.98", "attn": "exact", "mlp_macs": 26443264, "dense_mlp_macs": 53084160, "wiki_ppl": 13.9417, "wiki_kl": 0.00354, "wiki_top1": 0.966, "chat_ppl": 4.5828, "chat_kl": 0.00289, "chat_top1": 0.9758, "mean_k": 1708.7, "t": "02:49:19"}
+{"phase": 5, "config": "gate:2048", "attn": "exact", "mlp_macs": 28180480, "dense_mlp_macs": 53084160, "wiki_ppl": 13.7332, "wiki_kl": 0.01864, "wiki_top1": 0.9252, "chat_ppl": 4.5895, "chat_kl": 0.0149, "chat_top1": 0.9498, "t": "02:51:35"}
+{"phase": 5, "config": "gate:1536", "attn": "exact", "mlp_macs": 25559040, "dense_mlp_macs": 53084160, "wiki_ppl": 13.7189, "wiki_kl": 0.03685, "wiki_top1": 0.8953, "chat_ppl": 4.6617, "chat_kl": 0.02882, "chat_top1": 0.9308, "t": "02:54:14"}
+{"event": "done", "total_s": 911.8, "t": "02:54:14"}

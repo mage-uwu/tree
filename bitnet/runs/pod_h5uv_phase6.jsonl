@@ -1,0 +1,6 @@
+{"event": "key trees", "S": 32, "s": 634.1, "t": "02:53:48"}
+{"event": "vocab trees", "Sv": 128, "s": 43.0, "t": "02:54:39"}
+{"phase": 6, "combo": "attn", "S": 32, "tau_sel": 8.0, "mlp": "frac=0.99", "Sv": 128, "N": 8192, "wiki_ppl": 13.9044, "wiki_kl": 0.00283, "wiki_top1": 0.9706, "chat_ppl": 4.5674, "chat_kl": 0.00208, "chat_top1": 0.9799, "kv_read_frac": 0.5635, "t": "02:58:39"}
+{"phase": 6, "combo": "mlp", "S": 32, "tau_sel": 8.0, "mlp": "frac=0.99", "Sv": 128, "N": 8192, "wiki_ppl": 13.9342, "wiki_kl": 0.00277, "wiki_top1": 0.9706, "chat_ppl": 4.5705, "chat_kl": 0.00212, "chat_top1": 0.9796, "mlp_mean_k": 1915.7, "t": "03:01:24"}
+{"phase": 6, "combo": "head", "S": 32, "tau_sel": 8.0, "mlp": "frac=0.99", "Sv": 128, "N": 8192, "wiki_ppl": 14.0799, "wiki_kl": 0.01415, "wiki_top1": 0.9996, "chat_ppl": 4.636, "chat_kl": 0.01571, "chat_top1": 0.9995, "t": "03:03:19"}
+{"phase": 6, "combo": "attn+mlp", "S": 32, "tau_sel": 8.0, "mlp": "frac=0.99", "Sv": 128, "N": 8192, "wiki_ppl": 13.9155, "wiki_kl": 0.00305, "wiki_top1": 0.9697, "chat_ppl": 4.5731, "chat_kl": 0.00232, "chat_top1": 0.9787, "kv_read_frac": 0.564, "mlp_mean_k": 1915.9, "t": "03:08:43"}
