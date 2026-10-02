@@ -398,3 +398,19 @@ Energy of relu(g)² captured by the top-3072 tree-scored candidates (64 trees un
   Across the 6912 rows those entries are essentially independent ±1/0, so no shared code (tree, low-rank,
   mixture) of 32–64 B/row can reproduce them; only reading the actual entries can (that is why the partial
   sum works). Keys and vocab embeddings, by contrast, are highly structured, so a short code captures them.
+
+### Outlier partial-sum selector inside bitnet.cpp (`TREE_MLP_PARTIAL=256:3072`)
+Ops: `op_gapprox` (transposed gate rows of the 256 largest-|x| dims, int16 axpy) → `op_gcand` (exact gate for the
+top 3072, 0 elsewhere) → existing energy-0.99 selection, up, down. Kernel microbenchmark (`engine/partialbench.c`,
+1 thread): MLP 1.6–1.8× vs dense, vs 1.2–1.5× for the exact-gate path. **End to end it does not pay off:**
+
+| decode tok/s (`llama-bench -n 64 -r 3`) | stock | head 8192 + exact-gate MLP 0.99 | head 8192 + partial 256:3072 |
+|---|---|---|---|
+| 1 thread | 6.69 | **13.24 (1.98×)** | 13.41 (2.00×) |
+| 2 threads | 12.31 | **21.49 (1.75×)** | 20.48 (1.66×) |
+| 4 threads | 21.65 | **33.18 (1.53×)** | 30.10 (1.39×) |
+
+Engine ppl (3 chunks, stock 13.717): partial alone 14.206 (+3.6%), head + partial 14.309 (+4.3%), vs head +
+exact gate 13.856 (+1.0%). Gathering 3072 scattered gate rows plus the 256-row transposed pass costs about as much as
+stock's streaming dense gate kernel, so the MAC savings do not show up as time, and the quality cost is real.
+**Best configuration stays: tree output layer + exact-gate sparse MLP.**

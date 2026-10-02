@@ -24,6 +24,7 @@ static void print_stats() { if (g_sel_calls) fprintf(stderr, "tree-bitnet: mean 
 
 struct TreeCfg {
     float mlp_frac = 0; int mlp_k = 0; bool all = false;
+    int part_m = 0, part_C = 0;          // TREE_MLP_PARTIAL=m:C  outlier partial-sum candidate selection
     int head_N = 8192; bool head = false;
     int V = 0, d = 0, S = 0, NB = 0;
     std::vector<float> leaves;          // [S][16][d]
@@ -34,6 +35,7 @@ static TreeCfg & cfg() {
     std::call_once(once, [] {
         if (const char * s = getenv("TREE_MLP_FRAC")) c.mlp_frac = (float)atof(s);
         if (const char * s = getenv("TREE_MLP_K"))    c.mlp_k = atoi(s);
+        if (const char * s = getenv("TREE_MLP_PARTIAL")) { if (sscanf(s, "%d:%d", &c.part_m, &c.part_C) != 2) c.part_m = c.part_C = 0; }
         if (const char * s = getenv("TREE_ALL"))      c.all = atoi(s) != 0;
         if (const char * s = getenv("TREE_HEAD_N"))   c.head_N = atoi(s);
         if (const char * p = getenv("TREE_HEAD")) {
@@ -90,7 +92,10 @@ static float quant_i8(const float * x, int8_t * q, int n, int * sum) {
 
 // ------------------------------------------------------------------ sparse exact MLP
 struct MlpLayer {
-    ggml_tensor * up = nullptr, * down = nullptr;
+    ggml_tensor * gate = nullptr, * up = nullptr, * down = nullptr;
+    std::vector<uint8_t> gateT;        // [d rows][F] in I2_S packing (transposed gate), built on first use
+    float gate_scale = 0;
+    std::once_flag gbuilt;
     std::vector<uint8_t> downT;        // [F rows][d] in I2_S packing (transposed down), built on first use
     float down_scale = 0;
     std::once_flag built;
@@ -128,6 +133,94 @@ static int select_neurons(const float * g, int F, int * idx) {
     int n = 0;
     for (int i = 0; i < F; i++) if (g[i] > 0 && (int)(g[i] * g[i] * bs) > thr) idx[n++] = i;
     return n;
+}
+
+static void build_gateT(MlpLayer & L) {
+    const int d = (int)L.gate->ne[0], F = (int)L.gate->ne[1];          // gate: [d (cols), F (rows)]
+    const uint8_t * W = (const uint8_t *)L.gate->data;
+    L.gate_scale = *(const float *)(W + (size_t)d * F / 4);
+    L.gateT.assign((size_t)F * d / 4, 0);
+    for (int i = 0; i < F; i++) {
+        const uint8_t * row = W + (size_t)i * d / 4;
+        for (int j = 0; j < d; j++) {
+            int c = code_at(row, j);
+            uint8_t * trow = L.gateT.data() + (size_t)j * F / 4;
+            trow[(i / 128) * 32 + (i % 32)] |= (uint8_t)(c << (6 - 2 * ((i % 128) / 32)));
+        }
+    }
+}
+
+// top-m |x| input dims of the int8-quantized token (same quantization as the stock matmul)
+static int outlier_dims(const float * xt, int d, int m, int8_t * xq, int * dims, int * sx, float * as) {
+    *as = quant_i8(xt, xq, d, sx);
+    int hist[128] = {0}; for (int j = 0; j < d; j++) hist[std::abs((int)xq[j]) > 127 ? 127 : std::abs((int)xq[j])]++;
+    int thr = 127, cnt = 0; while (thr > 0 && cnt + hist[thr] <= m) cnt += hist[thr--];
+    int n = 0; for (int j = 0; j < d && n < m; j++) if (std::abs((int)xq[j]) > thr) dims[n++] = j;
+    return n;
+}
+
+// approximate gate ghat[F, T] (int sums, stored as float) = sum over the outlier dims of x_j * gate[:, j].  args: x
+static void op_gapprox(ggml_tensor * dst, int ith, int nth, void * ud) {
+    MlpLayer & L = *(MlpLayer *)ud;
+    std::call_once(L.gbuilt, [&] { build_gateT(L); });
+    const ggml_tensor * x = dst->src[0];
+    const int d = (int)x->ne[0], F = (int)dst->ne[0], T = (int)x->ne[1], m = cfg().part_m;
+    std::vector<int8_t> xq(d); std::vector<int> dims(d); std::vector<int16_t> acc(F); std::vector<int32_t> acc32(F);
+    int b0, b1; part(F / 128, ith, nth, b0, b1);
+    const __m256i m3 = _mm256_set1_epi8(3), one8 = _mm256_set1_epi8(1);
+    for (int t = 0; t < T; t++) {
+        const float * xt = (const float *)((const char *)x->data + t * x->nb[1]);
+        float * o = (float *)((char *)dst->data + t * dst->nb[1]);
+        int sx; float as; int n = outlier_dims(xt, d, m, xq.data(), dims.data(), &sx, &as);
+        std::fill(acc32.begin() + b0 * 128, acc32.begin() + b1 * 128, 0);
+        for (int k0 = 0; k0 < n; k0 += 256) {
+            int k1 = std::min(n, k0 + 256);
+            std::fill(acc.begin() + b0 * 128, acc.begin() + b1 * 128, 0);
+            for (int s = k0; s < k1; s++) {
+                const uint8_t * w = L.gateT.data() + (size_t)dims[s] * F / 4;
+                __m256i av = _mm256_set1_epi8(xq[dims[s]]);
+                for (int blk = b0; blk < b1; blk++) {
+                    __m256i bb = _mm256_loadu_si256((const __m256i *)(w + blk * 32));
+                    __m256i c4[4] = {_mm256_and_si256(_mm256_srli_epi16(bb, 6), m3), _mm256_and_si256(_mm256_srli_epi16(bb, 4), m3),
+                                     _mm256_and_si256(_mm256_srli_epi16(bb, 2), m3), _mm256_and_si256(bb, m3)};
+                    for (int qd = 0; qd < 4; qd++) {
+                        __m256i p = _mm256_sign_epi8(av, _mm256_sub_epi8(c4[qd], one8));
+                        __m256i * oo = (__m256i *)(acc.data() + blk * 128 + 32 * qd);
+                        _mm256_storeu_si256(oo, _mm256_add_epi16(_mm256_loadu_si256(oo), _mm256_cvtepi8_epi16(_mm256_castsi256_si128(p))));
+                        _mm256_storeu_si256(oo + 1, _mm256_add_epi16(_mm256_loadu_si256(oo + 1), _mm256_cvtepi8_epi16(_mm256_extracti128_si256(p, 1))));
+                    }
+                }
+            }
+            for (int i = b0 * 128; i < b1 * 128; i++) acc32[i] += acc[i];
+        }
+        for (int i = b0 * 128; i < b1 * 128; i++) o[i] = (float)acc32[i];
+    }
+}
+
+// g[F, T]: exact gate for the top-C neurons by ghat, 0 elsewhere (relu -> not selected).  args: ghat, x
+static void op_gcand(ggml_tensor * dst, int ith, int nth, void * ud) {
+    MlpLayer & L = *(MlpLayer *)ud;
+    const ggml_tensor * gh = dst->src[0], * x = dst->src[1];
+    const int F = (int)gh->ne[0], d = (int)x->ne[0], T = (int)x->ne[1], Cn = cfg().part_C;
+    const uint8_t * Wg = (const uint8_t *)L.gate->data;
+    std::vector<int8_t> xq(d);
+    for (int t = 0; t < T; t++) {
+        const float * gt = (const float *)((const char *)gh->data + t * gh->nb[1]);
+        const float * xt = (const float *)((const char *)x->data + t * x->nb[1]);
+        float * o = (float *)((char *)dst->data + t * dst->nb[1]);
+        float mx = 1e-9f; for (int i = 0; i < F; i++) mx = std::max(mx, gt[i]);
+        const int NBIN = 2048; int hist[NBIN] = {0}; const float bs = (NBIN - 1) / mx;
+        for (int i = 0; i < F; i++) if (gt[i] > 0) hist[(int)(gt[i] * bs)]++;
+        int thr = NBIN - 1, cnt = 0; while (thr > 0 && cnt + hist[thr] <= Cn) cnt += hist[thr--];
+        int sx; float as = quant_i8(xt, xq.data(), d, &sx);
+        int a, b; part(F, ith, nth, a, b);
+        for (int i = a; i < b; i++) {
+            if (gt[i] > 0 && (int)(gt[i] * bs) > thr) {
+                if (i + 8 < b) _mm_prefetch((const char *)(Wg + (size_t)(i + 8) * d / 4), _MM_HINT_T0);
+                o[i] = (float)(dot_codes(Wg + (size_t)i * d / 4, xq.data(), d) - sx) / as * L.gate_scale;
+            } else o[i] = 0.f;
+        }
+    }
 }
 
 // h[F, T] = relu(g)^2 * up(x) on the selected neurons, 0 elsewhere.  args: g [F,T], x [d,T]
@@ -222,7 +315,16 @@ ggml_tensor * tree_bitnet_ffn(ggml_context * ctx, ggml_tensor * x, ggml_tensor *
     if (gate->type != GGML_TYPE_I2_S || up->type != GGML_TYPE_I2_S || down->type != GGML_TYPE_I2_S) return nullptr;
     MlpLayer & L = g_mlp[il];
     L.up = up; L.down = down;
-    ggml_tensor * g = ggml_mul_mat(ctx, gate, x);                                   // exact gate, stock kernel
+    L.gate = gate;
+    ggml_tensor * g;
+    if (c.part_m > 0 && c.part_C > 0) {                                              // outlier partial-sum candidates
+        ggml_tensor * a0[1] = {x};
+        ggml_tensor * gh = ggml_custom_4d(ctx, GGML_TYPE_F32, gate->ne[1], x->ne[1], 1, 1, a0, 1, op_gapprox, GGML_N_TASKS_MAX, &L);
+        ggml_tensor * a1[2] = {gh, x};
+        g = ggml_custom_4d(ctx, GGML_TYPE_F32, gate->ne[1], x->ne[1], 1, 1, a1, 2, op_gcand, GGML_N_TASKS_MAX, &L);
+    } else {
+        g = ggml_mul_mat(ctx, gate, x);                                              // exact gate, stock kernel
+    }
     ggml_tensor * args[2] = {g, x};
     ggml_tensor * h = ggml_custom_4d(ctx, GGML_TYPE_F32, g->ne[0], g->ne[1], 1, 1, args, 2, op_hsel, GGML_N_TASKS_MAX, &L);
     h = ggml_rms_norm(ctx, h, eps);

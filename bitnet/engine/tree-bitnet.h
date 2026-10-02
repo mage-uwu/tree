@@ -2,6 +2,8 @@
 // Enabled by environment variables (unset = stock behaviour):
 //   TREE_MLP_FRAC=0.99   sparse exact MLP: per token keep the fewest neurons whose relu(gate)^2 covers this fraction
 //   TREE_MLP_K=1536      ... or a fixed top-k by relu(gate) (FRAC wins if both are set)
+//   TREE_MLP_PARTIAL=256:3072  candidates from an exact sum over the 256 largest-|x| input dims, exact gate for the
+//                        top 3072 only (measured: no decode speedup over the dense gate, +2.6% ppl; kept for reference)
 //   TREE_HEAD=path.bin   tree output layer (file from bitnet/export_vocab_trees.py)
 //   TREE_HEAD_N=8192     exact candidates per token
 //   TREE_ALL=1           also use the ops for multi-token batches (prompt / perplexity); default: decode only
