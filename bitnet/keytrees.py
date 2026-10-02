@@ -18,6 +18,9 @@ class KeyTrees(nn.Module):
         self.register_buffer("b", torch.zeros(H, S, self.L - 1))
         self.register_buffer("c", torch.zeros(H, S, self.L, hd))
 
+    def degenerate_frac(self):
+        return (self.w.abs().sum(-1) == 0).float().mean().item()
+
     def bytes_per_key(self):
         return self.S * self.D / 8
 
@@ -87,7 +90,10 @@ class KeyTrees(nn.Module):
                         i0 = int(BAND[0] * (n - 1)); i1 = max(int(BAND[1] * (n - 1)), i0 + 1)
                         gaps = p[i0 + 1:i1 + 1] - p[i0:i1]
                         g = int(gaps.argmax())
-                        if gaps[g] < tol:
+                        # degenerate only if the node has no spread (checked above); a tiny widest gap is
+                        # normal with many samples. Require the gap to exceed float resolution so the
+                        # threshold never sits on (copies of) a data point.
+                        if gaps[g] <= 1e-6 * p.abs().max().clamp(min=1e-12):
                             w = torch.zeros(hd, device=R.device)
                         else:
                             t = ((p[i0 + g] + p[i0 + g + 1]) / 2).item()

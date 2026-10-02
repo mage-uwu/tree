@@ -9,7 +9,9 @@ ap.add_argument("--out", default="runs/phase12.jsonl")
 ap.add_argument("--T", type=int, default=2048)
 ap.add_argument("--layer", type=int, default=15)
 ap.add_argument("--configs", default="16,32,48,64,96")          # trees x 4 bits
-ap.add_argument("--extra_layers", default="2,28")                 # S=32 at other layers
+ap.add_argument("--sweep_layers", default="15,2")
+ap.add_argument("--extra_layers", default="28")                   # S=64 only
+ap.add_argument("--skip_baseline", type=int, default=0)
 ap.add_argument("--calib_wiki", type=int, default=96)
 ap.add_argument("--calib_chat", type=int, default=32)
 ap.add_argument("--eval_wiki", type=int, default=64)              # sweep eval (baseline uses all)
@@ -36,7 +38,8 @@ log(a.out, {"phase": 1, "event": "data", "wiki_test_windows": len(wiki_test), "c
 
 # ---------------------------------------------------------------- phase 1: baseline
 STATE.enabled = False
-for name, X in [("wikitext2_test", wiki_test), ("ultrachat_test", chat_test),
+if not a.skip_baseline:
+  for name, X in [("wikitext2_test", wiki_test), ("ultrachat_test", chat_test),
                 ("wikitext2_test_sweepslice", wiki_test[:a.eval_wiki]), ("ultrachat_test_sweepslice", chat_test[:a.eval_chat])]:
     t = time.time(); r = evaluate(model, X, a.bs, kl=False, device=dev)
     log(a.out, dict(phase=1, event="baseline", data=name, T=a.T, s=round(time.time() - t, 1), **r))
@@ -119,7 +122,7 @@ def run(L, S, exact_sink, K, Sq):
     fit_s = time.time() - t
     STATE.keys = {L: kt}
     rec = {"phase": 2, "layer": L, "S": S, "D": 4, "bytes_per_key_per_kvhead": kt.bytes_per_key(), "exact_sink": exact_sink,
-           "fit_s": round(fit_s, 1), "score_rel_err": round(score_err(kt, L, wiki_test[-2:]), 5)}
+           "fit_s": round(fit_s, 1), "degenerate_nodes": round(kt.degenerate_frac(), 4), "score_rel_err": round(score_err(kt, L, wiki_test[-2:]), 5)}
     for name, X in [("wiki", wiki_test[:a.eval_wiki]), ("chat", chat_test[:a.eval_chat])]:
         r = evaluate(model, X, a.bs, kl=True, device=dev)
         rec.update({f"{name}_ppl": round(r["ppl"], 4), f"{name}_kl": round(r["kl"], 5), f"{name}_top1": round(r["top1_agree"], 4)})
@@ -129,14 +132,15 @@ def run(L, S, exact_sink, K, Sq):
 STATE.keys = {a.layer: lambda k: k.float()}     # hook sanity: identity replacement must give KL exactly 0
 r = evaluate(model, wiki_test[:2], a.bs, kl=True, device=dev); STATE.keys = {}
 log(a.out, {"phase": 2, "event": "identity_check", "kl": r["kl"], "top1": r["top1_agree"]})
-K, Sq = capture_layer(a.layer, calib)
-log(a.out, {"phase": 2, "event": "calib", "layer": a.layer, "keys_per_head": K.shape[1]})
-for S in map(int, a.configs.split(",")):
-    run(a.layer, S, False, K, Sq)
-run(a.layer, 32, True, K, Sq)
-del K
+for L in map(int, a.sweep_layers.split(",")):
+    K, Sq = capture_layer(L, calib)
+    log(a.out, {"phase": 2, "event": "calib", "layer": L, "keys_per_head": K.shape[1]})
+    for S in map(int, a.configs.split(",")):
+        run(L, S, True, K, Sq)
+    run(L, 64, False, K, Sq)
+    del K
 for L in map(int, filter(None, a.extra_layers.split(","))):
     K, Sq = capture_layer(L, calib)
-    run(L, 32, False, K, Sq); run(L, 32, True, K, Sq)
+    run(L, 64, True, K, Sq)
     del K
 log(a.out, {"event": "done", "total_s": round(time.time() - t0, 1)})
