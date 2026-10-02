@@ -376,3 +376,25 @@ all-layer = full WikiText-2 test + 64 chat windows, base 13.92):
    dimensions** that dominate the gate, so any static code is least accurate exactly where each token needs it.
 4. What does work for the MLP: exact gate (lossless at energy 0.99, 1.9× fewer MACs, in the engine), or the
    per-token outlier partial sum as a cheaper, lossy selector (3.0× fewer MLP MACs at KL 0.026, +0.9% ppl).
+
+### Can a change of basis or a per-regime metric make tree scoring work? (`runs/phase_spectral*.jsonl`)
+Energy of relu(g)² captured by the top-3072 tree-scored candidates (64 trees unless noted), eval 32 wiki + 16 chat:
+
+| scorer | layer 2 energy / KL | layer 15 energy / KL |
+|---|---|---|
+| plain trees (input metric) | 0.773 / 0.052 | 0.935 / 0.0021 |
+| trees after a random orthogonal rotation | 0.773 / 0.053 | – |
+| 4 regimes (k-means on the |x| outlier profile), one code each | 0.760 / 0.048 | 0.933 / 0.0020 |
+| 8 regimes | 0.802 / 0.048 | 0.932 / 0.0020 |
+| 16 regimes, 32 trees | 0.796 / 0.048 | 0.909 / 0.0027 |
+| (exact partial sum, 256 dims, C=2048, for reference) | 0.948 / 0.0041 | 0.829 / 0.0029 |
+
+- **Rotation does nothing**, as predicted: oblique (PC-split) trees and inner products are rotation-equivariant, so
+  a Hadamard / spectral / eigen basis change leaves the scores unchanged. Rotations help axis-aligned methods
+  (quantization grids), not these trees.
+- **Per-regime metrics barely help** (layer 2: 0.77 → 0.80 energy, KL 0.052 → 0.048) at K× storage.
+- **Root cause, refined:** it is not the query metric, it is that the gate rows are incompressible where it matters.
+  For a token, g_i is dominated by a few outlier input dims j*, i.e. by the row's own ternary entries W[i, j*].
+  Across the 6912 rows those entries are essentially independent ±1/0, so no shared code (tree, low-rank,
+  mixture) of 32–64 B/row can reproduce them; only reading the actual entries can (that is why the partial
+  sum works). Keys and vocab embeddings, by contrast, are highly structured, so a short code captures them.
