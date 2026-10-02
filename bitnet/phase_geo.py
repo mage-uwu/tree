@@ -284,7 +284,7 @@ def exact_leaves(SC):
 
 STATE.mlps = {L: lambda u: Y.float().mean(0).to(u.dtype).expand(*u.shape[:-1], d)}
 log(a.out, kl_rec({"phase": 11, "stage": "kl", "config": "MLP removed (mean output)"}))
-for cfg in a.kl_cfgs.split(","):
+for cfg in filter(None, a.kl_cfgs.split(",")):
     K, m = map(int, cfg.split(":"))
     if (K, m) not in CL: continue
     router, SC = CL[(K, m)]
@@ -292,7 +292,7 @@ for cfg in a.kl_cfgs.split(","):
     log(a.out, kl_rec({"phase": 11, "stage": "kl", "config": f"routed exact subsets K={K} m={m}"}))
 
 # ---------------------------------------------------------------- stage 4: distillation of the routed leaves
-for cfg in a.distill.split(","):
+for cfg in filter(None, a.distill.split(",")):
     K, m = map(int, cfg.split(":"))
     if (K, m) not in CL: continue
     router, (S, cov) = CL[(K, m)]
