@@ -141,3 +141,39 @@ third of the KL. Leaf constants alone explain 4%. The tiny model (d=128) hid thi
 41% of gate pre-activations are ≤ 0 (exactly zero neurons). → Pivot: keep the frozen ternary weights and use
 a cheap selector (tree / low-rank gate predictor) to choose which ~15% of neurons to compute exactly
 (phase 4b). This keeps the owner's constraint even more strictly (no fitted output tables at all).
+
+## Phase 4b — sparse *exact* MLP: which neurons to compute (`runs/phase4b*.jsonl`)
+Frozen ternary weights; per token only k of 6912 intermediate neurons are computed (gate/up rows, down
+columns); the mask is applied before `ffn_sub_norm`. Layer 15, eval 32 wiki + 16 chat windows. Same code path
+with all neurons: KL **0.000** (bit-exact). wiki KL:
+
+| selector | MLP MACs @k=1024 | k=512 | k=1024 | k=1536 | k=2048 |
+|---|---|---|---|---|---|
+| oracle top-|h| (upper bound) | 7.9M | 0.0034 | 0.0019 | 0.0016 | 0.0015 |
+| exact gate → top relu(g) | 22.9M | 0.0059 | 0.0030 | 0.0020 | 0.0016 |
+| exact gate → top relu(g)²·w (w = E|up|·‖down col‖) | 22.9M | 0.0059 | 0.0029 | 0.0020 | 0.0016 |
+| low-rank 128 gate predictor (corr 0.85) | 9.1M | 0.0139 | 0.0083 | 0.0056 | 0.0042 |
+| low-rank 256 gate predictor (corr 0.89) | 10.3M | 0.0104 | 0.0058 | 0.0039 | 0.0029 |
+| tree leaf sets, depth 8 | 7.9M | 0.0296 | 0.0222 | 0.0169 | 0.0133 |
+| tree D8 (k/2) ∪ low-rank 256 (k/2) | 10.3M | 0.0152 | 0.0094 | 0.0066 | – |
+| dense MLP | 53.1M | | | | |
+
+- **Noise floor of the model itself**: the oracle at k=2048 has output rel err 0.0009 yet KL 0.0015. Any
+  non-bit-exact perturbation of one layer costs ~0.0015 KL because BitNet's per-token int8 activation rounding
+  amplifies it (the fp32-vs-bf16 attention floor is the same size). Differences below ~0.001 are not signal.
+- Tree leaf sets fail: the active neuron set varies too much per token for a leaf to hold it (rel err 0.32 at
+  k=2048). Low-rank predictors are mediocre (the gate is high-rank, like everything else in this MLP).
+- **Exact gate + top-k** is the working selector: k=1536 → KL 0.0020 (≈ floor + 0.0005) with 2.1× fewer MLP MACs;
+  k=1024 → 0.0030 at 2.3×. Skipping only the neurons with gate ≤ 0 is lossless (41% of up/down work).
+
+## Engine baseline — stock bitnet.cpp on this machine
+Intel Xeon (Sapphire Rapids class, AVX-512 VNNI), 4 vCPU. Official `BitNet-b1.58-2B-4T` I2_S gguf.
+`llama-bench -p 0 -n 64`: **6.72 tok/s (1 thread), 21.6 tok/s (4 threads)**.
+
+Bytes per decoded token: ternary layers ≈ 0.52 GB (MLP ≈ 0.40 GB), **tied output layer 0.66 GB (f16,
+128256 × 2560)**. Timed in ggml (`engine/headbench.c`): output layer f16 = **60.6 ms of 149 ms/token on 1 thread
+(41%), 16.7 of 46 ms on 4 threads (36%)**; q8_0 49.3 / 13.7 ms; q4_0 52.6 / 8.9 ms.
+
+→ Amdahl at short context: output layer ~40%, MLPs ~45%, attention projections ~14%, attention scores small.
+The output layer is the same maximum-inner-product problem as key scoring, so it is a natural tree target:
+cluster the vocabulary, score centroids, compute exact logits only for candidate clusters (`phase_vocab.py`).
