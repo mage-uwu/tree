@@ -24,6 +24,10 @@ class _State:
     keys = {}           # layer -> module: k (B,Hkv,T,hd) -> k_hat
     mlps = {}           # layer -> module: u (B,T,d) -> y
     mlp_capture = None  # fn(layer, u, y)
+    select = set()      # layers whose key trees only SELECT keys; scores use exact keys (select + rescore)
+    khat = {}           # layer -> k_hat stashed for selection
+    attn = {}           # layer -> dict(tau_sel=, tau_v=, recent=): custom attention for that layer
+    attn_stats = {}     # layer -> [kept, total] over queries in the second half of the window
 STATE = _State()
 
 _orig_rope = MB.apply_rotary_pos_emb
@@ -33,8 +37,47 @@ def _rope(q, k, cos, sin, unsqueeze_dim=1):
     if STATE.capture is not None:
         STATE.capture(L, q, k)
     if STATE.enabled and L in STATE.keys:
-        k = STATE.keys[L](k).to(k.dtype)
+        if L in STATE.select:
+            STATE.khat[L] = STATE.keys[L](k)
+        else:
+            k = STATE.keys[L](k).to(k.dtype)
     return q, k
+
+
+from transformers import AttentionInterface
+from transformers.integrations.sdpa_attention import sdpa_attention_forward
+
+def tree_attention(module, q, k, v, mask, dropout=0.0, scaling=None, **kw):
+    """sdpa unless STATE.attn has an entry for this layer. Then: exact scores, restricted to keys that are
+    (a) within tau_sel of the max *tree* score (if the layer's key trees are in select mode), always including
+    the sink (position 0) and the `recent` newest keys, and (b) within tau_v of the max exact score."""
+    L = module.layer_idx
+    cfg = STATE.attn.get(L) if STATE.enabled else None
+    if cfg is None:
+        return sdpa_attention_forward(module, q, k, v, mask, dropout=dropout, scaling=scaling, **kw)
+    G = module.num_key_value_groups
+    kk = MB.repeat_kv(k, G).float(); vv = MB.repeat_kv(v, G).float(); qf = q.float()
+    s = qf @ kk.transpose(-1, -2) * scaling
+    T, S = s.shape[-2:]
+    i = torch.arange(T, device=s.device)[:, None] + (S - T); j = torch.arange(S, device=s.device)[None, :]
+    causal = j <= i
+    s = s.masked_fill(~causal, float("-inf"))
+    keep = causal.expand_as(s)
+    kh = STATE.khat.pop(L, None)
+    if kh is not None and cfg.get("tau_sel") is not None:
+        st = (qf @ MB.repeat_kv(kh.float(), G).transpose(-1, -2) * scaling).masked_fill(~causal, float("-inf"))
+        sel = st > st.amax(-1, keepdim=True) - cfg["tau_sel"]
+        sel = sel | (j == 0) | ((i - j) < cfg.get("recent", 0))
+        keep = keep & sel
+    if cfg.get("tau_v") is not None:
+        keep = keep & (s > s.amax(-1, keepdim=True) - cfg["tau_v"])
+    half = (i[:, 0] >= T // 2) if T > 1 else torch.ones(T, dtype=torch.bool, device=s.device)
+    st_ = STATE.attn_stats.setdefault(L, [0.0, 0.0])
+    st_[0] += keep[..., half, :].sum().item(); st_[1] += causal.expand_as(s)[..., half, :].sum().item()
+    p = torch.softmax(s.masked_fill(~keep, float("-inf")), -1)
+    return (p @ vv).transpose(1, 2).contiguous().to(q.dtype), None
+
+AttentionInterface.register("tree", tree_attention)
 MB.apply_rotary_pos_emb = _rope
 
 
@@ -60,6 +103,7 @@ def load_model(device="cuda", dtype=torch.bfloat16, path=MODEL):
     for p in model.parameters():
         p.requires_grad_(False)
     install_hooks(model)
+    model.set_attn_implementation("tree")
     return model, tok
 
 
