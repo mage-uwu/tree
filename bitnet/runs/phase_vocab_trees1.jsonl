@@ -1,0 +1,16 @@
+{"event": "hidden", "tokens": {"wiki": 32752, "chat": 32752}, "V": 128256, "d": 2560, "t": "02:25:19"}
+{"event": "fit", "S": 16, "bytes_per_token": 8, "s": 6.2, "degenerate_nodes": 0.0, "rel_err": 0.07644, "t": "02:25:41"}
+{"S": 16, "bytes_per_token": 8, "cands": 64, "wiki_top1": 0.44223, "wiki_mass": 0.40641, "wiki_kl": 4.57121, "wiki_ppl": 1305.7244, "chat_top1": 0.3031, "chat_mass": 0.29445, "chat_kl": 8.41158, "chat_ppl": 15546.469, "macs": 819200, "lookup_bytes": 1026048, "dense_macs": 328335360, "t": "02:25:48"}
+{"S": 16, "bytes_per_token": 8, "cands": 256, "wiki_top1": 0.69849, "wiki_mass": 0.65165, "wiki_kl": 3.03821, "wiki_ppl": 293.6836, "chat_top1": 0.57264, "chat_mass": 0.56015, "chat_kl": 5.92921, "chat_ppl": 1408.0171, "macs": 1310720, "lookup_bytes": 1026048, "dense_macs": 328335360, "t": "02:25:55"}
+{"S": 16, "bytes_per_token": 8, "cands": 1024, "wiki_top1": 0.87674, "wiki_mass": 0.8379, "wiki_kl": 1.57236, "wiki_ppl": 70.8028, "chat_top1": 0.80487, "chat_mass": 0.78962, "chat_kl": 3.15528, "chat_ppl": 97.4711, "macs": 3276800, "lookup_bytes": 1026048, "dense_macs": 328335360, "t": "02:26:02"}
+{"event": "fit", "S": 32, "bytes_per_token": 16, "s": 11.4, "degenerate_nodes": 0.0, "rel_err": 0.0647, "t": "02:26:14"}
+{"S": 32, "bytes_per_token": 16, "cands": 64, "wiki_top1": 0.63147, "wiki_mass": 0.56756, "wiki_kl": 2.98959, "wiki_ppl": 284.3085, "chat_top1": 0.52876, "chat_mass": 0.51313, "chat_kl": 5.69468, "chat_ppl": 1133.2053, "macs": 1474560, "lookup_bytes": 2052096, "dense_macs": 328335360, "t": "02:26:21"}
+{"S": 32, "bytes_per_token": 16, "cands": 256, "wiki_top1": 0.83937, "wiki_mass": 0.77575, "wiki_kl": 1.72719, "wiki_ppl": 82.1556, "chat_top1": 0.74829, "chat_mass": 0.72961, "chat_kl": 3.52131, "chat_ppl": 140.5961, "macs": 1966080, "lookup_bytes": 2052096, "dense_macs": 328335360, "t": "02:26:27"}
+{"S": 32, "bytes_per_token": 16, "cands": 1024, "wiki_top1": 0.94321, "wiki_mass": 0.9048, "wiki_kl": 0.78452, "wiki_ppl": 32.1886, "chat_top1": 0.90736, "chat_mass": 0.89267, "chat_kl": 1.52361, "chat_ppl": 20.0529, "macs": 3932160, "lookup_bytes": 2052096, "dense_macs": 328335360, "t": "02:26:34"}
+{"event": "fit", "S": 64, "bytes_per_token": 32, "s": 22.6, "degenerate_nodes": 0.0, "rel_err": 0.05371, "t": "02:26:58"}
+{"S": 64, "bytes_per_token": 32, "cands": 64, "wiki_top1": 0.77977, "wiki_mass": 0.69254, "wiki_kl": 1.80366, "wiki_ppl": 87.0075, "chat_top1": 0.69577, "chat_mass": 0.67002, "chat_kl": 3.65178, "chat_ppl": 160.7383, "macs": 2785280, "lookup_bytes": 4104192, "dense_macs": 328335360, "t": "02:27:04"}
+{"S": 64, "bytes_per_token": 32, "cands": 256, "wiki_top1": 0.91506, "wiki_mass": 0.8505, "wiki_kl": 0.93471, "wiki_ppl": 38.1239, "chat_top1": 0.87292, "chat_mass": 0.85195, "chat_kl": 1.77107, "chat_ppl": 26.0574, "macs": 3276800, "lookup_bytes": 4104192, "dense_macs": 328335360, "t": "02:27:11"}
+{"S": 64, "bytes_per_token": 32, "cands": 1024, "wiki_top1": 0.9778, "wiki_mass": 0.94404, "wiki_kl": 0.33816, "wiki_ppl": 20.4881, "chat_top1": 0.96699, "chat_mass": 0.95478, "chat_kl": 0.55641, "chat_ppl": 7.5919, "macs": 5242880, "lookup_bytes": 4104192, "dense_macs": 328335360, "t": "02:27:18"}
+{"event": "exact", "data": "wiki", "ppl": 14.126, "t": "02:27:19"}
+{"event": "exact", "data": "chat", "ppl": 4.2708, "t": "02:27:20"}
+{"event": "done", "total_s": 151.1, "t": "02:27:20"}
