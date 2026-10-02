@@ -1,0 +1,1 @@
+{"base": 1.5646, "attn": "16x6", "values": true, "mlp": "8:16"}

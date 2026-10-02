@@ -1,0 +1,12 @@
+step 0 loss 4.448 1s
+step 250 loss 1.835 79s
+step 500 loss 1.661 149s
+step 750 loss 1.577 220s
+step 1000 loss 1.429 291s
+step 1250 loss 1.435 363s
+step 1500 loss 1.445 433s
+step 1750 loss 1.370 504s
+step 2000 loss 1.329 574s
+step 2250 loss 1.324 643s
+step 2500 loss 1.377 713s
+saved runs/full_shakespeare.pt

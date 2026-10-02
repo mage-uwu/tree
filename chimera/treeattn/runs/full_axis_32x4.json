@@ -1,0 +1,31 @@
+{
+ "cfg": {
+  "vocab": 65,
+  "d": 128,
+  "heads": 4,
+  "layers": 4,
+  "task": "shakespeare",
+  "mlp": 4
+ },
+ "base": {
+  "val_loss": 1.5646
+ },
+ "attention_ablated": {
+  "val_loss": 3.5693
+ },
+ "runs": [
+  {
+   "S": 32,
+   "D": 4,
+   "qaware": true,
+   "bits_per_key": 128,
+   "leaves": 16,
+   "values": false,
+   "cache_bytes_per_token_per_head": 96,
+   "score_rel_err": 0.0926,
+   "zero_shot": {
+    "val_loss": 1.5847
+   }
+  }
+ ]
+}

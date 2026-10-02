@@ -1,0 +1,11 @@
+{"base": 1.5646, "attn": "16x6", "values": false, "mlp": "8:16"}
+layer 0 fitted 61s
+layer 1 fitted 116s
+layer 2 fitted 170s
+layer 3 fitted 221s
+{"base": 1.5646, "attn": "16x6", "values": false, "mlp": "8:16", "fit_s": 221, "closed_form": 1.8545}
+distil step 0 kl 0.2760 1s
+distil step 100 kl 0.2861 123s
+distil step 200 kl 0.2444 243s
+{"base": 1.5646, "attn": "16x6", "values": false, "mlp": "8:16", "fit_s": 221, "closed_form": 1.8545, "leaf_tuned": 1.7908, "ft_s": 382, "leaf_params": 4849664}
+{"base": 1.5646, "attn": "16x6", "values": false, "mlp": "8:16", "fit_s": 221, "closed_form": 1.8545, "leaf_tuned": 1.7908, "ft_s": 382, "leaf_params": 4849664, "int8_mlp": 1.7905}

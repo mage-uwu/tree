@@ -1,0 +1,24 @@
+{"base": 1.5646, "mlp_ablated": 3.2771, "runs": []}
+Traceback (most recent call last):
+  File "/home/claude/chimera/treeattn/convert_mlp.py", line 35, in <module>
+    m = convert_mlp(copy.deepcopy(base), calib, D, k, r, rg)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/chimera/treeattn/tree_mlp.py", line 144, in convert_mlp
+    x = model._mlp(l, x)
+        ^^^^^^^^^^^^^^^^
+  File "/home/claude/chimera/treeattn/tree_attn.py", line 175, in _mlp
+    return x + tm[l](self.n2[l](x), self.up[l], self.down[l])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/chimera/treeattn/tree_mlp.py", line 100, in forward
+    return self.parts(u, up, down, leaf) + self.c[leaf]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/chimera/treeattn/tree_mlp.py", line 95, in parts
+    if self.r: out = out + (self.Q[leaf] @ (self.P[leaf] @ u[..., None]))[..., 0]
+                            ~~~~~~^^^^^^
+RuntimeError: [enforce fail at alloc_cpu.cpp:127] err == 0. DefaultCPUAllocator: can't allocate memory: you tried to allocate 8589934592 bytes. Error code 12 (Cannot allocate memory)

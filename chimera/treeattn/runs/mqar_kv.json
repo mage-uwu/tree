@@ -1,0 +1,90 @@
+{
+ "cfg": {
+  "vocab": 128,
+  "d": 128,
+  "heads": 4,
+  "layers": 2,
+  "task": "mqar"
+ },
+ "base": {
+  "acc@32": 1.0,
+  "acc@48": 0.9998,
+  "acc@64": 0.9952
+ },
+ "attention_ablated": {
+  "acc@32": 0.0144,
+  "acc@48": 0.0172,
+  "acc@64": 0.0144
+ },
+ "runs": [
+  {
+   "S": 8,
+   "D": 6,
+   "qaware": true,
+   "bits_per_key": 48,
+   "leaves": 64,
+   "values": true,
+   "cache_bytes_per_token_per_head": 16,
+   "score_rel_err": 0.1179,
+   "zero_shot": {
+    "acc@32": 0.9999,
+    "acc@48": 0.9993,
+    "acc@64": 0.9886
+   },
+   "distilled": {
+    "acc@32": 1.0,
+    "acc@48": 0.9991,
+    "acc@64": 0.9888
+   },
+   "score_rel_err_after": 0.135,
+   "trainable_params": 262144,
+   "ft_seconds": 192
+  },
+  {
+   "S": 16,
+   "D": 6,
+   "qaware": true,
+   "bits_per_key": 96,
+   "leaves": 64,
+   "values": true,
+   "cache_bytes_per_token_per_head": 32,
+   "score_rel_err": 0.0553,
+   "zero_shot": {
+    "acc@32": 1.0,
+    "acc@48": 0.9998,
+    "acc@64": 0.9878
+   },
+   "distilled": {
+    "acc@32": 1.0,
+    "acc@48": 0.9996,
+    "acc@64": 0.9886
+   },
+   "score_rel_err_after": 0.0813,
+   "trainable_params": 524288,
+   "ft_seconds": 312
+  },
+  {
+   "S": 16,
+   "D": 8,
+   "qaware": true,
+   "bits_per_key": 128,
+   "leaves": 256,
+   "values": true,
+   "cache_bytes_per_token_per_head": 32,
+   "score_rel_err": 0.0331,
+   "zero_shot": {
+    "acc@32": 0.9561,
+    "acc@48": 0.936,
+    "acc@64": 0.8868
+   },
+   "distilled": {
+    "acc@32": 0.9454,
+    "acc@48": 0.9253,
+    "acc@64": 0.8714
+   },
+   "score_rel_err_after": 0.1089,
+   "trainable_params": 2097152,
+   "ft_seconds": 370
+  }
+ ]
+}

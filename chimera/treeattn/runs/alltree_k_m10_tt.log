@@ -1,0 +1,4 @@
+{"base": 1.5646, "attn": "16x6", "values": false, "mlp": "10:16"}
+layer 0 fitted 63s
+layer 1 fitted 119s
+layer 2 fitted 177s

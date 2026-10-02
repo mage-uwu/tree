@@ -1,0 +1,7 @@
+{
+ "attn": "runs/full_tree_kv_16x6.pt",
+ "mlp": "runs/full_mlptree_10_0_16_0.pt",
+ "base": 1.5646,
+ "plugged": 1.7557,
+ "int8_mlp": 1.757
+}

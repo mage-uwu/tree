@@ -1,0 +1,8 @@
+{"base": 1.5646, "mlp_ablated": 3.2771, "runs": []}
+{"D": 8, "leaves": 256, "k": 0, "r": 32, "rg": 0, "row_units": 72, "predicted_speedup": 14.2, "fit_s": 52, "val_loss": 1.6923}
+{"D": 10, "leaves": 1024, "k": 0, "r": 16, "rg": 0, "row_units": 42, "predicted_speedup": 24.4, "fit_s": 58, "val_loss": 1.6773}
+{"D": 10, "leaves": 1024, "k": 0, "r": 32, "rg": 0, "row_units": 74, "predicted_speedup": 13.8, "fit_s": 67, "val_loss": 1.665}
+{"D": 8, "leaves": 256, "k": 0, "r": 64, "rg": 0, "row_units": 136, "predicted_speedup": 7.5, "fit_s": 68, "val_loss": 1.6844}
+{"D": 10, "leaves": 1024, "k": 0, "r": 64, "rg": 0, "row_units": 138, "predicted_speedup": 7.4, "fit_s": 77, "val_loss": 1.7894}
+{"D": 12, "leaves": 4096, "k": 0, "r": 16, "rg": 0, "row_units": 44, "predicted_speedup": 23.3, "fit_s": 76, "val_loss": 1.7555}
+{"D": 9, "leaves": 512, "k": 0, "r": 48, "rg": 0, "row_units": 105, "predicted_speedup": 9.8, "fit_s": 64, "val_loss": 1.6664}

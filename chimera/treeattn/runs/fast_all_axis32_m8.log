@@ -1,0 +1,2 @@
+{"attn": "runs/full_axis_k_32x4_q8.pt", "mlp": "runs/full_mlptree_8_0_16_0.pt", "base": 1.5646, "plugged": 1.6761}
+{"attn": "runs/full_axis_k_32x4_q8.pt", "mlp": "runs/full_mlptree_8_0_16_0.pt", "base": 1.5646, "plugged": 1.6761, "int8_mlp": 1.6777}

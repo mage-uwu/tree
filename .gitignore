@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+chimera/treeattn/treeattn
+chimera/treeattn/scanbench
+chimera/treeattn/mlpbench
+chimera/treeattn/attnbench
+chimera/treeattn/runs/smoke_*
+chimera/treeattn/runs/full_shakespeare.tre
+chimera/treeattn/runs/full_tree_k_24x4_q8.tre
+chimera/treeattn/runs/full_mlptree_6_0_8_0.pt
+chimera/treeattn/runs/full_mlptree_6_0_8_0_q8.pt

@@ -1,0 +1,9 @@
+{"attn": "runs/full_tree_k_16x6.pt", "mlp": "runs/full_mlptree_8_0_16_0.pt", "base": 1.5646, "plugged": 1.6668}
+step 0 kl 0.1162 2s
+step 50 kl 0.1341 85s
+step 100 kl 0.1123 167s
+step 150 kl 0.1079 247s
+step 200 kl 0.1205 325s
+step 250 kl 0.1151 407s
+{"attn": "runs/full_tree_k_16x6.pt", "mlp": "runs/full_mlptree_8_0_16_0.pt", "base": 1.5646, "plugged": 1.6668, "joint_leaf_tuned": 1.6689, "ft_s": 516}
+{"attn": "runs/full_tree_k_16x6.pt", "mlp": "runs/full_mlptree_8_0_16_0.pt", "base": 1.5646, "plugged": 1.6668, "joint_leaf_tuned": 1.6689, "ft_s": 516, "int8_mlp": 1.6686}

@@ -1,0 +1,94 @@
+{
+ "base": 1.5646,
+ "mlp_ablated": 3.2771,
+ "runs": [
+  {
+   "D": 6,
+   "leaves": 64,
+   "k": 0,
+   "r": 0,
+   "rg": 0,
+   "row_units": 6,
+   "predicted_speedup": 170.7,
+   "fit_s": 13,
+   "val_loss": 2.2939
+  },
+  {
+   "D": 8,
+   "leaves": 256,
+   "k": 0,
+   "r": 0,
+   "rg": 0,
+   "row_units": 8,
+   "predicted_speedup": 128.0,
+   "fit_s": 15,
+   "val_loss": 2.129
+  },
+  {
+   "D": 10,
+   "leaves": 1024,
+   "k": 0,
+   "r": 0,
+   "rg": 0,
+   "row_units": 10,
+   "predicted_speedup": 102.4,
+   "fit_s": 19,
+   "val_loss": 2.012
+  },
+  {
+   "D": 12,
+   "leaves": 4096,
+   "k": 0,
+   "r": 0,
+   "rg": 0,
+   "row_units": 12,
+   "predicted_speedup": 85.3,
+   "fit_s": 29,
+   "val_loss": 1.9482
+  },
+  {
+   "D": 0,
+   "leaves": 1,
+   "k": 0,
+   "r": 0,
+   "rg": 32,
+   "row_units": 64,
+   "predicted_speedup": 16.0,
+   "fit_s": 10,
+   "val_loss": 2.2105
+  },
+  {
+   "D": 0,
+   "leaves": 1,
+   "k": 0,
+   "r": 0,
+   "rg": 64,
+   "row_units": 128,
+   "predicted_speedup": 8.0,
+   "fit_s": 10,
+   "val_loss": 2.1899
+  },
+  {
+   "D": 8,
+   "leaves": 256,
+   "k": 0,
+   "r": 0,
+   "rg": 32,
+   "row_units": 72,
+   "predicted_speedup": 14.2,
+   "fit_s": 16,
+   "val_loss": 2.0968
+  },
+  {
+   "D": 10,
+   "leaves": 1024,
+   "k": 0,
+   "r": 0,
+   "rg": 32,
+   "row_units": 74,
+   "predicted_speedup": 13.8,
+   "fit_s": 20,
+   "val_loss": 2.0527
+  }
+ ]
+}

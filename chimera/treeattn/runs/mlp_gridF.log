@@ -1,0 +1,2 @@
+{"base": 1.5646, "mlp_ablated": 3.2771, "runs": []}
+{"D": 10, "leaves": 1024, "k": 0, "r": 16, "rg": 0, "row_units": 42, "predicted_speedup": 24.4, "fit_s": 195, "val_loss": 1.656, "distilled": 1.6268, "ft_s": 206, "leaf_params": 17301504}

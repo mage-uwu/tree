@@ -1,0 +1,75 @@
+{
+ "cfg": {
+  "vocab": 65,
+  "d": 128,
+  "heads": 4,
+  "layers": 4,
+  "task": "shakespeare",
+  "mlp": 4
+ },
+ "base": {
+  "val_loss": 1.5646
+ },
+ "attention_ablated": {
+  "val_loss": 3.5693
+ },
+ "runs": [
+  {
+   "S": 8,
+   "D": 6,
+   "qaware": true,
+   "bits_per_key": 48,
+   "leaves": 64,
+   "values": false,
+   "cache_bytes_per_token_per_head": 72,
+   "score_rel_err": 0.1778,
+   "zero_shot": {
+    "val_loss": 1.6648
+   },
+   "distilled": {
+    "val_loss": 1.6499
+   },
+   "score_rel_err_after": 0.2216,
+   "trainable_params": 262144,
+   "ft_seconds": 306
+  },
+  {
+   "S": 16,
+   "D": 6,
+   "qaware": true,
+   "bits_per_key": 96,
+   "leaves": 64,
+   "values": false,
+   "cache_bytes_per_token_per_head": 80,
+   "score_rel_err": 0.0727,
+   "zero_shot": {
+    "val_loss": 1.5792
+   },
+   "distilled": {
+    "val_loss": 1.5799
+   },
+   "score_rel_err_after": 0.1153,
+   "trainable_params": 524288,
+   "ft_seconds": 433
+  },
+  {
+   "S": 16,
+   "D": 8,
+   "qaware": true,
+   "bits_per_key": 128,
+   "leaves": 256,
+   "values": false,
+   "cache_bytes_per_token_per_head": 80,
+   "score_rel_err": 0.0376,
+   "zero_shot": {
+    "val_loss": 1.5731
+   },
+   "distilled": {
+    "val_loss": 1.5716
+   },
+   "score_rel_err_after": 0.0885,
+   "trainable_params": 2097152,
+   "ft_seconds": 508
+  }
+ ]
+}

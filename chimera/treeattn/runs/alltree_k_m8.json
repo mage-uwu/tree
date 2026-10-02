@@ -1,0 +1,12 @@
+{
+ "base": 1.5646,
+ "attn": "16x6",
+ "values": false,
+ "mlp": "8:16",
+ "fit_s": 294,
+ "closed_form": 1.8655,
+ "leaf_tuned": 1.7885,
+ "ft_s": 440,
+ "leaf_params": 4849664,
+ "int8_mlp": 1.7903
+}

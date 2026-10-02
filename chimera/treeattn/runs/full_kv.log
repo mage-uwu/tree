@@ -1,0 +1,3 @@
+{"cfg": {"vocab": 65, "d": 128, "heads": 4, "layers": 4, "task": "shakespeare", "mlp": 4}, "base": {"val_loss": 1.5646}, "attention_ablated": {"val_loss": 3.5693}, "runs": []}
+{"S": 8, "D": 6, "qaware": true, "bits_per_key": 48, "leaves": 64, "values": true, "cache_bytes_per_token_per_head": 16, "score_rel_err": 0.1778, "zero_shot": {"val_loss": 1.7775}, "distilled": {"val_loss": 1.7146}, "score_rel_err_after": 0.2152, "trainable_params": 524288, "ft_seconds": 439}
+{"S": 16, "D": 6, "qaware": true, "bits_per_key": 96, "leaves": 64, "values": true, "cache_bytes_per_token_per_head": 32, "score_rel_err": 0.0727, "zero_shot": {"val_loss": 1.6389}, "distilled": {"val_loss": 1.6151}, "score_rel_err_after": 0.129, "trainable_params": 1048576, "ft_seconds": 694}
