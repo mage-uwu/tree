@@ -142,27 +142,29 @@ def windows(tok, text, T, n=None, bos=True):
 
 # ---------------------------------------------------------------- eval
 @torch.no_grad()
-def evaluate(model, X, bs=2, kl=True, device="cuda"):
+def evaluate(model, X, bs=2, kl=True, device="cuda", chunk=512):
     """Mean NLL (and ppl) of the current model on windows X; if kl, also mean KL(base || current)
-    per token, where base = same model with STATE.enabled = False. Loss excludes the BOS position."""
+    per token, where base = same model with STATE.enabled = False. Loss excludes the BOS position.
+    Log-softmax over the 128k vocab is done in position chunks to bound memory."""
     nll = kls = top1 = 0.0; n = 0
     for i in range(0, len(X), bs):
         x = X[i:i + bs].to(device)
         if kl:
             STATE.enabled = False
-            lb = model(x).logits[:, :-1].float()
+            lb = model(x).logits[:, :-1]
             STATE.enabled = True
-        lc = model(x).logits[:, :-1].float()
+        lc = model(x).logits[:, :-1]
         y = x[:, 1:]
-        lpc = F.log_softmax(lc, -1)
-        nll += -lpc.gather(-1, y[..., None]).sum().item()
-        if kl:
-            lpb = F.log_softmax(lb, -1)
-            kls += (lpb.exp() * (lpb - lpc)).sum().item()
-            top1 += (lb.argmax(-1) == lc.argmax(-1)).sum().item()
-            del lb, lpb
+        for j in range(0, y.shape[1], chunk):
+            lpc = F.log_softmax(lc[:, j:j + chunk].float(), -1)
+            nll += -lpc.gather(-1, y[:, j:j + chunk, None]).sum().item()
+            if kl:
+                lpb = F.log_softmax(lb[:, j:j + chunk].float(), -1)
+                kls += (lpb.exp() * (lpb - lpc)).sum().item()
+                top1 += (lpb.argmax(-1) == lpc.argmax(-1)).sum().item()
         n += y.numel()
-        del lc, lpc
+        del lc
+        if kl: del lb
     out = {"nll": nll / n, "ppl": math.exp(nll / n), "tokens": n}
     if kl:
         out["kl"] = kls / n; out["top1_agree"] = top1 / n

@@ -18,6 +18,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--out", default="runs/phase4b.jsonl")
 ap.add_argument("--T", type=int, default=2048)
 ap.add_argument("--layers", default="15,2,28")
+ap.add_argument("--sels", default="floor,oracle,gate,gatew,lowrank,tree")
 ap.add_argument("--ks", default="512,1024,1536,2048")
 ap.add_argument("--ranks", default="128,256")
 ap.add_argument("--depths", default="8,10")
@@ -72,6 +73,12 @@ def masked_mlp(mlp, select):
     return f
 
 
+def ternary_cols(mlp):
+    W = mlp.down_proj.weight.float()
+    s = 1.0 / W.abs().mean().clamp(min=1e-5)
+    return ((W * s).round().clamp(-1, 1)).abs().sum(0)              # nonzeros per down column (L1 of ternary)
+
+
 def topk_mask(score, k):
     return torch.zeros_like(score, dtype=torch.bool).scatter_(-1, score.topk(k, -1).indices, True)
 
@@ -99,12 +106,31 @@ for L in map(int, a.layers.split(",")):
     Us = []; stream(L, calib[:48], lambda u: Us.append(u)); Us = torch.cat(Us)
 
     with torch.no_grad():
+        SEL = a.sels.split(",")
+        if "floor" in SEL:
+            ev({"layer": L, "sel": "floor (all neurons, same code path)", "k": F, "macs": 3 * F * d}, L,
+               masked_mlp(mlp, lambda x, g, h: torch.ones_like(h, dtype=torch.bool)), Ut, Yt, den)
+            ev({"layer": L, "sel": "gate>0 (lossless)", "k": -1, "macs": None}, L,
+               masked_mlp(mlp, lambda x, g, h: g > 0), Ut, Yt, den)
+        # per-neuron weight for the gate score: E[|up_i| | g_i > 0] * ||down[:, i]||_1
+        gs, us = [], []
+        for i in range(0, min(len(Us), 32768), 4096):
+            gs.append(mlp.gate_proj(Us[i:i + 4096]).float()); us.append(mlp.up_proj(Us[i:i + 4096]).float())
+        gs, us = torch.cat(gs), torch.cat(us)
+        aw = ((us.abs() * (gs > 0)).sum(0) / (gs > 0).sum(0).clamp(min=1)) * ternary_cols(mlp)
+        del gs, us
         for k in KS:
+          if "oracle" in SEL:
             ev({"layer": L, "sel": "oracle", "k": k, "macs": 3 * k * d}, L,
                masked_mlp(mlp, lambda x, g, h, k=k: topk_mask(h.abs().float(), k)), Ut, Yt, den)
+          if "gate" in SEL:
             ev({"layer": L, "sel": "gate", "k": k, "macs": F * d + 2 * k * d}, L,
                masked_mlp(mlp, lambda x, g, h, k=k: topk_mask(torch.relu(g).float(), k)), Ut, Yt, den)
+          if "gatew" in SEL:
+            ev({"layer": L, "sel": "gate^2*w", "k": k, "macs": F * d + 2 * k * d}, L,
+               masked_mlp(mlp, lambda x, g, h, k=k: topk_mask(torch.relu(g).float().pow(2) * aw, k)), Ut, Yt, den)
 
+        if "lowrank" not in SEL and "tree" not in SEL: continue
         # low-rank gate predictor in the input-data metric: W ~ (W C^1/2) svd -> A = C^-1/2 V_r S_r, B = U_r^T
         from transformers.integrations.bitnet import ActQuant
         Xq = ActQuant.apply(Us).float()
@@ -114,7 +140,7 @@ for L in map(int, a.layers.split(",")):
         ev_, V = torch.linalg.eigh(C.double()); ev_ = ev_.clamp(min=ev_.max() * 1e-6)
         Ch = (V * ev_.sqrt()) @ V.T; Chi = (V * ev_.rsqrt()) @ V.T
         Uw, Sw, Vw = torch.linalg.svd(W.double() @ Ch, full_matrices=False)       # (F,d)
-        for r in map(int, a.ranks.split(",")):
+        for r in (map(int, a.ranks.split(",")) if "lowrank" in SEL else []):
             A = (Chi @ Vw[:r].T * Sw[:r]).float()          # (d, r)
             B = Uw[:, :r].T.float().contiguous()           # (r, F)
             pred = lambda x, A=A, B=B: (ActQuant.apply(x).float() @ A) @ B
@@ -124,6 +150,9 @@ for L in map(int, a.layers.split(",")):
                 ev({"layer": L, "sel": f"lowrank{r}", "k": k, "gate_pred_corr": round(corr, 4), "macs": r * (d + F) + 3 * k * d}, L,
                    masked_mlp(mlp, lambda x, g, h, k=k, pred=pred: topk_mask(torch.relu(pred(x)), k)), Ut, Yt, den)
 
+        del Xq
+        torch.cuda.empty_cache()
+        if "tree" not in SEL: continue
         # tree leaf sets
         Uc = Us.float() - Us.float().mean(0)
         _, P = torch.linalg.eigh((Uc.T @ Uc).double()); P = P.flip(1)[:, :64].T.float()   # top-64 PCs
@@ -154,6 +183,8 @@ for L in map(int, a.layers.split(",")):
                     x = u[i:i + 4096]; _, h = parts(mlp, x)
                     cnt.index_add_(0, _route(x, w, b, D), topk_mask(h.abs().float(), min(1024, F)).float())
             stream(L, calib, acc)
+            del Z
+            torch.cuda.empty_cache()
             leafsets = {k: topk_mask(cnt, k) for k in set(KS) | {k // 2 for k in KS}}
             for k in KS:
                 ev({"layer": L, "sel": f"tree_D{D}", "k": k, "macs": D * d + 3 * k * d}, L,
