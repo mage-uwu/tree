@@ -281,3 +281,16 @@ Mean selected MLP neurons on llama-bench's tokens: 2070 (frac 0.99), 1850 (0.98)
   (scattered 640 B reads, 32 B slices per thread in `op_down`) use bandwidth badly. Fixes to try: neuron-major
   partition with a reduction op, row reordering by co-activation so selected rows are contiguous.
 - Attention select+rescore is not in the engine yet (it pays off at long context: stock drops to 7.9 tok/s at 8k).
+
+**Update — neuron-partitioned down op** (each thread accumulates full transposed rows for its share of the selected
+neurons into a private slot; a second op sums 16 slots). Sparse MLP alone, frac 0.99: 1 thread 6.54 → 7.77 (1.19×),
+4 threads 22.45 → 24.75 (1.10×, was 0.96×). Combined (`llama-bench -p 0 -n 64 -r 3`):
+
+| threads | stock | head N=8192 | **head 8192 + MLP 0.99** | head 4096 + MLP 0.98 |
+|---|---|---|---|---|
+| 1 | 6.53 | 9.83 (1.51×) | **12.87 (1.97×)** | 14.20 (2.17×) |
+| 2 | 12.35 | 17.03 (1.38×) | **20.80 (1.68×)** | 23.19 (1.88×) |
+| 4 | 21.80 | 26.38 (1.21×) | **31.46 (1.44×)** | 35.03 (1.61×) |
+
+Engine ppl (3 chunks, stock 13.717): head 8192 + MLP 0.99 = **13.856 (+1.0%)** (same as head alone — the sparse MLP
+costs nothing measurable); head 4096 + MLP 0.98 = 14.209 (+3.6%).

@@ -157,43 +157,61 @@ static void op_hsel(ggml_tensor * dst, int ith, int nth, void * ud) {
     }
 }
 
-// y[d, T] = down . hn using the transposed rows of the nonzero neurons.  args: hn [F,T]
-static void op_down(ggml_tensor * dst, int ith, int nth, void * ud) {
+// partial sums: thread ith accumulates full transposed rows for its share of the nonzero neurons into slot ith of
+// out [d, NSLOT*T] (int32 accumulation converted to float with the activation/weight scales); unused slots are zeroed.
+#define NSLOT 16
+static void op_down_part(ggml_tensor * dst, int ith, int nth, void * ud) {
     MlpLayer & L = *(MlpLayer *)ud;
     std::call_once(L.built, [&] { build_downT(L); });                         // weights are mapped by now
     const ggml_tensor * h = dst->src[0];
-    const int F = (int)h->ne[0], d = (int)dst->ne[0], T = (int)h->ne[1];
-    std::vector<int> nz(F); std::vector<int8_t> a(F); std::vector<int32_t> acc32(d);
-    std::vector<int16_t> acc(d + 64);
-    int b0, b1; part(d / 128, ith, nth, b0, b1);                               // output blocks of 128
+    const int F = (int)h->ne[0], d = (int)L.down->ne[1], T = (int)h->ne[1];
+    std::vector<int> nz(F); std::vector<int8_t> a(F), q(F); std::vector<int32_t> acc32(d); std::vector<int16_t> acc(d);
     const __m256i m3 = _mm256_set1_epi8(3), one8 = _mm256_set1_epi8(1);
     for (int t = 0; t < T; t++) {
         const float * ht = (const float *)((const char *)h->data + t * h->nb[1]);
-        float * yt = (float *)((char *)dst->data + t * dst->nb[1]);
-        int sm; std::vector<int8_t> q(F); float as = quant_i8(ht, q.data(), F, &sm);
+        int sm; float as = quant_i8(ht, q.data(), F, &sm);
         int n = 0; for (int i = 0; i < F; i++) if (q[i]) { nz[n] = i; a[n] = q[i]; n++; }
-        std::fill(acc32.begin(), acc32.end(), 0);
-        for (int k0 = 0; k0 < n; k0 += 256) {
-            int k1 = std::min(n, k0 + 256);
-            std::fill(acc.begin(), acc.end(), 0);
-            for (int s = k0; s < k1; s++) {
-                const uint8_t * w = L.downT.data() + (size_t)nz[s] * d / 4;
-                __m256i av = _mm256_set1_epi8(a[s]);
-                for (int blk = b0; blk < b1; blk++) {
-                    __m256i bb = _mm256_loadu_si256((const __m256i *)(w + blk * 32));
-                    __m256i c4[4] = {_mm256_and_si256(_mm256_srli_epi16(bb, 6), m3), _mm256_and_si256(_mm256_srli_epi16(bb, 4), m3),
-                                     _mm256_and_si256(_mm256_srli_epi16(bb, 2), m3), _mm256_and_si256(bb, m3)};
-                    for (int qd = 0; qd < 4; qd++) {
-                        __m256i p = _mm256_sign_epi8(av, _mm256_sub_epi8(c4[qd], one8));
-                        __m256i * o = (__m256i *)(acc.data() + blk * 128 + 32 * qd);
-                        _mm256_storeu_si256(o, _mm256_add_epi16(_mm256_loadu_si256(o), _mm256_cvtepi8_epi16(_mm256_castsi256_si128(p))));
-                        _mm256_storeu_si256(o + 1, _mm256_add_epi16(_mm256_loadu_si256(o + 1), _mm256_cvtepi8_epi16(_mm256_extracti128_si256(p, 1))));
+        for (int slot = ith; slot < NSLOT; slot += nth) {
+            float * o = (float *)dst->data + ((size_t)t * NSLOT + slot) * d;
+            if (slot >= nth) { memset(o, 0, d * sizeof(float)); continue; }
+            int s0, s1; part(n, slot, nth, s0, s1);
+            std::fill(acc32.begin(), acc32.end(), 0);
+            for (int k0 = s0; k0 < s1; k0 += 256) {
+                int k1 = std::min(s1, k0 + 256);
+                std::fill(acc.begin(), acc.end(), 0);
+                for (int s = k0; s < k1; s++) {
+                    const uint8_t * w = L.downT.data() + (size_t)nz[s] * d / 4;
+                    if (s + 4 < k1) { const char * pn = (const char *)(L.downT.data() + (size_t)nz[s + 4] * d / 4); for (int c = 0; c < d / 4; c += 64) _mm_prefetch(pn + c, _MM_HINT_T0); }
+                    __m256i av = _mm256_set1_epi8(a[s]);
+                    for (int blk = 0; blk < d / 128; blk++) {
+                        __m256i bb = _mm256_loadu_si256((const __m256i *)(w + blk * 32));
+                        __m256i c4[4] = {_mm256_and_si256(_mm256_srli_epi16(bb, 6), m3), _mm256_and_si256(_mm256_srli_epi16(bb, 4), m3),
+                                         _mm256_and_si256(_mm256_srli_epi16(bb, 2), m3), _mm256_and_si256(bb, m3)};
+                        for (int qd = 0; qd < 4; qd++) {
+                            __m256i p = _mm256_sign_epi8(av, _mm256_sub_epi8(c4[qd], one8));
+                            __m256i * oo = (__m256i *)(acc.data() + blk * 128 + 32 * qd);
+                            _mm256_storeu_si256(oo, _mm256_add_epi16(_mm256_loadu_si256(oo), _mm256_cvtepi8_epi16(_mm256_castsi256_si128(p))));
+                            _mm256_storeu_si256(oo + 1, _mm256_add_epi16(_mm256_loadu_si256(oo + 1), _mm256_cvtepi8_epi16(_mm256_extracti128_si256(p, 1))));
+                        }
                     }
                 }
+                for (int jj = 0; jj < d; jj++) acc32[jj] += acc[jj];
             }
-            for (int j = b0 * 128; j < b1 * 128; j++) acc32[j] += acc[j];
+            const float sc = as > 0 ? L.down_scale / as : 0.f;
+            for (int jj = 0; jj < d; jj++) o[jj] = (float)acc32[jj] * sc;
         }
-        for (int j = b0 * 128; j < b1 * 128; j++) yt[j] = as > 0 ? (float)acc32[j] / as * L.down_scale : 0.f;
+    }
+}
+
+// y[d, T] = sum over the NSLOT partial slots
+static void op_down_sum(ggml_tensor * dst, int ith, int nth, void *) {
+    const ggml_tensor * p = dst->src[0];
+    const int d = (int)dst->ne[0], T = (int)dst->ne[1];
+    int a, b; part(d, ith, nth, a, b);
+    for (int t = 0; t < T; t++) {
+        float * y = (float *)((char *)dst->data + t * dst->nb[1]);
+        const float * pp = (const float *)p->data + (size_t)t * NSLOT * d;
+        for (int j = a; j < b; j++) { float s = 0; for (int k = 0; k < NSLOT; k++) s += pp[(size_t)k * d + j]; y[j] = s; }
     }
 }
 
@@ -210,7 +228,9 @@ ggml_tensor * tree_bitnet_ffn(ggml_context * ctx, ggml_tensor * x, ggml_tensor *
     h = ggml_rms_norm(ctx, h, eps);
     h = ggml_mul(ctx, h, sub_norm);
     ggml_tensor * a1[1] = {h};
-    return ggml_custom_4d(ctx, GGML_TYPE_F32, x->ne[0], x->ne[1], 1, 1, a1, 1, op_down, GGML_N_TASKS_MAX, &L);
+    ggml_tensor * part_sums = ggml_custom_4d(ctx, GGML_TYPE_F32, x->ne[0], NSLOT * x->ne[1], 1, 1, a1, 1, op_down_part, GGML_N_TASKS_MAX, &L);
+    ggml_tensor * a2[1] = {part_sums};
+    return ggml_custom_4d(ctx, GGML_TYPE_F32, x->ne[0], x->ne[1], 1, 1, a2, 1, op_down_sum, GGML_N_TASKS_MAX, nullptr);
 }
 
 // ------------------------------------------------------------------ tree output layer
