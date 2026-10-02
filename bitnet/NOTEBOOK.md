@@ -183,3 +183,36 @@ Bytes per decoded token: ternary layers ≈ 0.52 GB (MLP ≈ 0.40 GB), **tied ou
 → Amdahl at short context: output layer ~40%, MLPs ~45%, attention projections ~14%, attention scores small.
 The output layer is the same maximum-inner-product problem as key scoring, so it is a natural tree target:
 cluster the vocabulary, score centroids, compute exact logits only for candidate clusters (`phase_vocab.py`).
+
+## Tree output layer — select + rescore over the vocabulary (`phase_vocab.py`, `runs/phase_vocab_*.jsonl`)
+Same machinery as the key trees, with the 128256 token embeddings as the "keys" and the final hidden states as
+the queries (metric = hidden-state second moments). Every token gets S 4-bit tree codes (S/2 bytes); per decoded
+token the trees score all 128k tokens by table lookup, the top-N are rescored exactly, the rest keep their tree
+score (so the softmax is defined everywhere and ppl/KL are measurable). 32k wiki + 32k chat positions; exact head
+ppl on these positions: wiki 14.126, chat 4.271.
+
+First try, k-means clusters (C = 512–2048, top-m clusters exact): **failed** — k-means on these embeddings is
+degenerate (median cluster 4–5 tokens, largest 17–28k), best top-1 agreement 0.85 / 0.92.
+
+| trees (B/token) | N exact | top-1 agree wiki / chat | mass covered | KL wiki / chat | ppl wiki / chat | MACs |
+|---|---|---|---|---|---|---|
+| 16 (8) | 1024 | 0.877 / 0.805 | 0.84 / 0.79 | 1.57 / 3.16 | 70.8 / 97.5 | 3.3M |
+| 32 (16) | 1024 | 0.943 / 0.907 | 0.90 / 0.89 | 0.78 / 1.52 | 32.2 / 20.1 | 3.9M |
+| 64 (32) | 1024 | 0.978 / 0.967 | 0.94 / 0.95 | 0.34 / 0.56 | 20.5 / 7.6 | 5.2M |
+| 64 (32) | 4096 | 0.9958 / 0.9940 | 0.983 / 0.990 | 0.092 / 0.119 | 15.51 / 4.85 | 13.1M |
+| 64 (32) | 8192 | 0.9987 / 0.9978 | 0.992 / 0.995 | 0.035 / 0.049 | 14.58 / 4.48 | 23.6M |
+| 128 (64) | 2048 | 0.9979 / 0.9970 | 0.981 / 0.991 | 0.060 / 0.066 | 15.04 / 4.62 | 10.5M |
+| 128 (64) | 4096 | 0.9992 / 0.9990 | 0.989 / 0.996 | 0.028 / 0.028 | 14.49 / 4.41 | 15.7M |
+| **128 (64)** | **8192** | **0.9997 / 0.9995** | 0.994 / 0.998 | **0.012 / 0.014** | **14.25 / 4.34** | 26.2M |
+| dense | – | 1 | 1 | 0 | 14.126 / 4.271 | 328.3M |
+
+- With 128 trees (8 MB of codes for the whole vocabulary vs 656 MB f16) and 8192 exact candidates, greedy decoding
+  changes about 1 token in 3000; the remaining KL comes from the approximate tail, not from the top tokens.
+- CPU speed (`engine/vocabbench.c`, 1 thread, random data): tables 1.1 ms + fast-scan 1.2 ms + top-N 0.3 ms +
+  exact f16 rescoring 4.5 ms = **7.1 ms vs 60.6 ms for ggml's f16 head (8.5×)**; N=4096: 4.8 ms (12.8×).
+
+## Engine microbenchmarks (this machine, 1 thread)
+- Sparse exact MLP (`engine/sparsemlp.c`, bitnet.cpp's I2_S packing, same AVX2 kernel style for both paths,
+  software prefetch for gathered rows; noisy VM, ranges over runs): dense MLP 0.95–1.2 ms; exact gate alone
+  0.30–0.39 ms; sparse k=1024 **1.8–2.2× faster**, k=1536 **1.6–1.75×**. Gathered rows cost more per row than
+  streamed ones; the dense gate is ~55% of the sparse path, so gate-based selection caps the MLP at ~3×.
