@@ -16,7 +16,10 @@ The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the
   speed (scan/tables double); keep 32. TEAL-style input sparsity fails on BitNet (Phase 9). Notebook Phase 10.
 - MLP→tree, last attempt (Phase 11): routing in *neuron space* (clusters by which neurons fire, static exact subsets,
   linear router) is 3× better than input-space trees (single-layer KL 0.012 at 6.6× fewer MLP MACs), and local
-  distillation helps modestly, but it is ~10× short of a 30-layer budget. Treat MLP-to-tree as closed without training.
+  distillation helps modestly, but it is ~10× short of a 30-layer budget.
+- Healing (Phase 12): all MLPs replaced by teacher-bootstrapped students + end-to-end KL training, 6M tokens/arm:
+  6.8× fewer MLP MACs heals ppl 2506 → 42 (base 12.7), then plateaus (KL 1.37). Neuron-space routing beats a narrow
+  MLP 2× at equal compute, but radical MLP cuts need pretraining-scale data. MLP-to-tree is closed at this budget.
 - Next: AVX-512 fast-scan and int8 leaves (would make 64 trees pay); per-layer tau; sparse-MLP memory layout.
 
 # Tree-BitNet handoff

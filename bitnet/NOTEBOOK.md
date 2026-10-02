@@ -597,3 +597,32 @@ Verdict:
 - What would be needed for "radically fast" is a real training run (all layers jointly, KL to the teacher, billions
   of tokens: the Q-Sparse / BitNet-a4.8 route), which is outside the minimal-adaptation constraint. Per-layer
   local distillation plateaus because the missing energy lives in neurons the leaf does not have.
+
+## Phase 12 — healing: all 30 MLPs replaced, end-to-end KL training (`phase_heal.py`, `runs/phase_heal.jsonl`) — **plateaus far from usable**
+Every MLP is replaced by a student bootstrapped from the teacher (phase-11 neuron-space clusters, exact top-m teacher
+rows per cluster, linear router; K=1 = one narrow MLP of the m globally most important neurons). Only the students
+are trained, end to end, on KL(teacher ‖ student) over the full vocabulary (attention/embeddings frozen; HF BitLinear
+passes gradients straight through). WikiText-2 train + UltraChat, 1024-token windows, batch 4, Adam 3e-4 with
+warm-up and cosine, 1500 steps = 6.1M tokens per arm, A100 80GB (~0.8 s/step). Eval: 8 wiki + 4 chat 2048-token
+windows (base ppl 12.75 / 5.11).
+
+| arm | MLP MACs vs dense | student params | step 0 wiki ppl / KL | 1M tok | 2M tok | **6.1M tokens: wiki ppl / KL / top-1** | chat ppl / KL |
+|---|---|---|---|---|---|---|---|
+| A: K=1, m=1024 | 6.8× fewer | 236 M | 2506 / 5.57 | 64.6 | 49.7 | **42.0 / 1.37 / 50%** | 34.4 / 2.14 |
+| B: K=8 routed, m=512 | 13.4× | 944 M | 4363 / 6.12 | 135 | 83.9 | **61.9 / 1.77 / 44%** | 57.2 / 2.66 |
+| C: K=1, m=512 | 13.5× | 118 M | 388528 / 10.6 | – | 227 | **128.9 / 2.55 / 33%** | 137 / 3.54 |
+
+(ternary arm not run: the float arms already fail.)
+
+- Healing works in the sense that it is fast and recovers most of the damage of cutting every MLP at once
+  (ppl 2506 → 42 in 6M tokens, ~20 min). It does not get near the model: KL 1.37 is ~60× the whole-stack budget
+  (0.023), and the curve is flat by the end (KL 1.44 → 1.39 → 1.37 over the last 3M tokens; the cosine
+  schedule decays, but the step-to-step gains were already small).
+- Routing in neuron space is worth a lot at equal per-token compute: B (8 clusters × 512) beats C (one 512-neuron
+  MLP) by 2× in perplexity at every checkpoint, and nearly matches A, which spends twice the MACs.
+- Interpretation: removing 85–93% of the MLP's per-token neurons is a capacity cut, not a fitting problem. Closing
+  it needs the capacity back (more neurons per token, or many more parameters behind the router) *and* real
+  pretraining-scale data, which is what Q-Sparse / BitNet a4.8 do (hundreds of billions of tokens, from scratch).
+  6M tokens of local healing cannot substitute. Cheaper targets that stay within reach: heal a *partial* cut
+  (e.g. routed subsets with m≈2048, or only the easiest layers), measured against the lossless exact-gate sparse
+  MLP (1.9× fewer MACs) that it would have to beat.

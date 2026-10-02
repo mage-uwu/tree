@@ -1,0 +1,123 @@
+{"phase": 12, "event": "data", "arm": "K=1 m=1024", "train_windows": 15996, "train_tokens": 16379904, "t": "19:01:28"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 0, "router_acc": 1.0, "coverage": 0.296, "t": "19:01:42"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 1, "router_acc": 1.0, "coverage": 0.5949, "t": "19:01:43"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 2, "router_acc": 1.0, "coverage": 0.4883, "t": "19:01:43"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 3, "router_acc": 1.0, "coverage": 0.4659, "t": "19:01:44"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 4, "router_acc": 1.0, "coverage": 0.5208, "t": "19:01:45"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 5, "router_acc": 1.0, "coverage": 0.4871, "t": "19:01:45"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 6, "router_acc": 1.0, "coverage": 0.5416, "t": "19:01:46"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 7, "router_acc": 1.0, "coverage": 0.527, "t": "19:01:47"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 8, "router_acc": 1.0, "coverage": 0.4607, "t": "19:01:48"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 9, "router_acc": 1.0, "coverage": 0.4352, "t": "19:01:49"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 10, "router_acc": 1.0, "coverage": 0.4531, "t": "19:01:50"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 11, "router_acc": 1.0, "coverage": 0.4589, "t": "19:01:51"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 12, "router_acc": 1.0, "coverage": 0.4426, "t": "19:01:52"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 13, "router_acc": 1.0, "coverage": 0.4322, "t": "19:01:53"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 14, "router_acc": 1.0, "coverage": 0.4073, "t": "19:01:54"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 15, "router_acc": 1.0, "coverage": 0.4387, "t": "19:01:54"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 16, "router_acc": 1.0, "coverage": 0.4363, "t": "19:01:55"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 17, "router_acc": 1.0, "coverage": 0.5055, "t": "19:01:56"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 18, "router_acc": 1.0, "coverage": 0.5042, "t": "19:01:57"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 19, "router_acc": 1.0, "coverage": 0.5197, "t": "19:01:57"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 20, "router_acc": 1.0, "coverage": 0.4802, "t": "19:01:58"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 21, "router_acc": 1.0, "coverage": 0.4821, "t": "19:01:59"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 22, "router_acc": 1.0, "coverage": 0.5119, "t": "19:02:00"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 23, "router_acc": 1.0, "coverage": 0.5594, "t": "19:02:01"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 24, "router_acc": 1.0, "coverage": 0.5671, "t": "19:02:01"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 25, "router_acc": 1.0, "coverage": 0.5472, "t": "19:02:02"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 26, "router_acc": 1.0, "coverage": 0.5466, "t": "19:02:03"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 27, "router_acc": 1.0, "coverage": 0.5365, "t": "19:02:04"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 28, "router_acc": 1.0, "coverage": 0.5288, "t": "19:02:04"}
+{"phase": 12, "event": "built", "arm": "K=1 m=1024", "layer": 29, "router_acc": 1.0, "coverage": 0.5627, "t": "19:02:05"}
+{"phase": 12, "event": "base", "data": "wiki", "ppl": 12.7472, "t": "19:02:06"}
+{"phase": 12, "event": "base", "data": "chat", "ppl": 5.1124, "t": "19:02:06"}
+{"phase": 12, "arm": "K=1 m=1024", "step": 0, "student_params_M": 236.0, "mlp_macs": 7866880, "mlp_fewer_macs": 6.75, "wiki_ppl": 2505.8234, "wiki_kl": 5.56699, "wiki_top1": 0.1111, "chat_ppl": 17093.895, "chat_kl": 8.32652, "chat_top1": 0.0625, "t": "19:02:09"}
+{"phase": 12, "arm": "K=1 m=1024", "step": 250, "student_params_M": 236.0, "mlp_macs": 7866880, "mlp_fewer_macs": 6.75, "train_kl": 4.00888, "tokens_seen": 1024000, "elapsed_s": 349.4, "wiki_ppl": 64.6259, "wiki_kl": 1.79069, "wiki_top1": 0.4208, "chat_ppl": 63.7018, "chat_kl": 2.76416, "chat_top1": 0.356, "t": "19:05:32"}
+{"phase": 12, "arm": "K=1 m=1024", "step": 500, "student_params_M": 236.0, "mlp_macs": 7866880, "mlp_fewer_macs": 6.75, "train_kl": 2.51869, "tokens_seen": 2048000, "elapsed_s": 552.2, "wiki_ppl": 49.6706, "wiki_kl": 1.53316, "wiki_top1": 0.4709, "chat_ppl": 44.4296, "chat_kl": 2.39303, "chat_top1": 0.4018, "t": "19:08:55"}
+{"phase": 12, "arm": "K=1 m=1024", "step": 750, "student_params_M": 236.0, "mlp_macs": 7866880, "mlp_fewer_macs": 6.75, "train_kl": 2.2667, "tokens_seen": 3072000, "elapsed_s": 755.2, "wiki_ppl": 44.9935, "wiki_kl": 1.43735, "wiki_top1": 0.4855, "chat_ppl": 37.8528, "chat_kl": 2.23667, "chat_top1": 0.4187, "t": "19:12:18"}
+{"phase": 12, "arm": "K=1 m=1024", "step": 1000, "student_params_M": 236.0, "mlp_macs": 7866880, "mlp_fewer_macs": 6.75, "train_kl": 2.14612, "tokens_seen": 4096000, "elapsed_s": 957.9, "wiki_ppl": 42.8971, "wiki_kl": 1.38922, "wiki_top1": 0.494, "chat_ppl": 35.4212, "chat_kl": 2.17075, "chat_top1": 0.4277, "t": "19:15:41"}
+{"phase": 12, "arm": "K=1 m=1024", "step": 1250, "student_params_M": 236.0, "mlp_macs": 7866880, "mlp_fewer_macs": 6.75, "train_kl": 2.10594, "tokens_seen": 5120000, "elapsed_s": 1160.8, "wiki_ppl": 42.0774, "wiki_kl": 1.37268, "wiki_top1": 0.4977, "chat_ppl": 34.5182, "chat_kl": 2.14509, "chat_top1": 0.4314, "t": "19:19:04"}
+{"phase": 12, "arm": "K=1 m=1024", "step": 1500, "student_params_M": 236.0, "mlp_macs": 7866880, "mlp_fewer_macs": 6.75, "train_kl": 2.09897, "tokens_seen": 6144000, "elapsed_s": 1363.8, "wiki_ppl": 41.9761, "wiki_kl": 1.36963, "wiki_top1": 0.4984, "chat_ppl": 34.3713, "chat_kl": 2.14024, "chat_top1": 0.432, "t": "19:22:27"}
+{"event": "done", "arm": "K=1 m=1024", "total_s": 1366.5, "t": "19:22:27"}
+{"phase": 12, "event": "data", "arm": "K=8 m=512", "train_windows": 15996, "train_tokens": 16379904, "t": "19:24:00"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 0, "router_acc": 0.998, "coverage": 0.7983, "t": "19:24:10"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 1, "router_acc": 0.9969, "coverage": 0.7558, "t": "19:24:11"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 2, "router_acc": 0.9904, "coverage": 0.6256, "t": "19:24:12"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 3, "router_acc": 0.9928, "coverage": 0.6091, "t": "19:24:14"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 4, "router_acc": 0.9897, "coverage": 0.6043, "t": "19:24:15"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 5, "router_acc": 0.9884, "coverage": 0.5576, "t": "19:24:17"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 6, "router_acc": 0.9838, "coverage": 0.6025, "t": "19:24:18"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 7, "router_acc": 0.9873, "coverage": 0.5857, "t": "19:24:20"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 8, "router_acc": 0.9897, "coverage": 0.5372, "t": "19:24:21"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 9, "router_acc": 0.9899, "coverage": 0.4887, "t": "19:24:23"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 10, "router_acc": 0.9846, "coverage": 0.4897, "t": "19:24:24"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 11, "router_acc": 0.9934, "coverage": 0.4789, "t": "19:24:26"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 12, "router_acc": 0.9904, "coverage": 0.4847, "t": "19:24:27"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 13, "router_acc": 0.9908, "coverage": 0.4717, "t": "19:24:29"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 14, "router_acc": 0.9955, "coverage": 0.4681, "t": "19:24:30"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 15, "router_acc": 0.9946, "coverage": 0.5127, "t": "19:24:32"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 16, "router_acc": 0.9925, "coverage": 0.5129, "t": "19:24:34"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 17, "router_acc": 0.9927, "coverage": 0.5318, "t": "19:24:35"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 18, "router_acc": 0.9951, "coverage": 0.556, "t": "19:24:37"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 19, "router_acc": 0.9924, "coverage": 0.5473, "t": "19:24:39"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 20, "router_acc": 0.9906, "coverage": 0.5681, "t": "19:24:40"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 21, "router_acc": 0.9908, "coverage": 0.5539, "t": "19:24:42"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 22, "router_acc": 0.9929, "coverage": 0.5536, "t": "19:24:44"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 23, "router_acc": 0.9931, "coverage": 0.5994, "t": "19:24:45"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 24, "router_acc": 0.9896, "coverage": 0.6161, "t": "19:24:47"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 25, "router_acc": 0.9909, "coverage": 0.5963, "t": "19:24:48"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 26, "router_acc": 0.9893, "coverage": 0.5848, "t": "19:24:50"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 27, "router_acc": 0.9937, "coverage": 0.5781, "t": "19:24:52"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 28, "router_acc": 0.9936, "coverage": 0.5756, "t": "19:24:53"}
+{"phase": 12, "event": "built", "arm": "K=8 m=512", "layer": 29, "router_acc": 0.9905, "coverage": 0.6238, "t": "19:24:54"}
+{"phase": 12, "event": "base", "data": "wiki", "ppl": 12.7472, "t": "19:24:55"}
+{"phase": 12, "event": "base", "data": "chat", "ppl": 5.1124, "t": "19:24:56"}
+{"phase": 12, "arm": "K=8 m=512", "step": 0, "student_params_M": 943.8, "mlp_macs": 3952640, "mlp_fewer_macs": 13.43, "wiki_ppl": 4363.2616, "wiki_kl": 6.12104, "wiki_top1": 0.1127, "chat_ppl": 71014.4173, "chat_kl": 9.75098, "chat_top1": 0.0159, "t": "19:24:59"}
+{"phase": 12, "arm": "K=8 m=512", "step": 250, "student_params_M": 943.8, "mlp_macs": 3952640, "mlp_fewer_macs": 13.43, "train_kl": 5.49899, "tokens_seen": 1024000, "elapsed_s": 371.4, "wiki_ppl": 134.8689, "wiki_kl": 2.55963, "wiki_top1": 0.3361, "chat_ppl": 220.8386, "chat_kl": 4.01907, "chat_top1": 0.224, "t": "19:28:51"}
+{"phase": 12, "arm": "K=8 m=512", "step": 500, "student_params_M": 943.8, "mlp_macs": 3952640, "mlp_fewer_macs": 13.43, "train_kl": 3.48267, "tokens_seen": 2048000, "elapsed_s": 601.8, "wiki_ppl": 83.8598, "wiki_kl": 2.08147, "wiki_top1": 0.3989, "chat_ppl": 93.4659, "chat_kl": 3.14229, "chat_top1": 0.3045, "t": "19:32:41"}
+{"phase": 12, "arm": "K=8 m=512", "step": 750, "student_params_M": 943.8, "mlp_macs": 3952640, "mlp_fewer_macs": 13.43, "train_kl": 2.97567, "tokens_seen": 3072000, "elapsed_s": 832.2, "wiki_ppl": 68.7544, "wiki_kl": 1.89582, "wiki_top1": 0.4259, "chat_ppl": 68.4933, "chat_kl": 2.8402, "chat_top1": 0.341, "t": "19:36:31"}
+{"phase": 12, "arm": "K=8 m=512", "step": 1000, "student_params_M": 943.8, "mlp_macs": 3952640, "mlp_fewer_macs": 13.43, "train_kl": 2.72946, "tokens_seen": 4096000, "elapsed_s": 1066.4, "wiki_ppl": 64.0519, "wiki_kl": 1.8111, "wiki_top1": 0.4398, "chat_ppl": 60.8172, "chat_kl": 2.71966, "chat_top1": 0.3577, "t": "19:40:26"}
+{"phase": 12, "arm": "K=8 m=512", "step": 1250, "student_params_M": 943.8, "mlp_macs": 3952640, "mlp_fewer_macs": 13.43, "train_kl": 2.64024, "tokens_seen": 5120000, "elapsed_s": 1301.3, "wiki_ppl": 62.1647, "wiki_kl": 1.77931, "wiki_top1": 0.4452, "chat_ppl": 57.6762, "chat_kl": 2.66555, "chat_top1": 0.3631, "t": "19:44:21"}
+{"phase": 12, "arm": "K=8 m=512", "step": 1500, "student_params_M": 943.8, "mlp_macs": 3952640, "mlp_fewer_macs": 13.43, "train_kl": 2.62425, "tokens_seen": 6144000, "elapsed_s": 1532.2, "wiki_ppl": 61.8886, "wiki_kl": 1.77332, "wiki_top1": 0.4443, "chat_ppl": 57.2464, "chat_kl": 2.65873, "chat_top1": 0.3658, "t": "19:48:11"}
+{"event": "done", "arm": "K=8 m=512", "total_s": 1535.6, "t": "19:48:11"}
+{"phase": 12, "event": "data", "arm": "K=1 m=512", "train_windows": 15996, "train_tokens": 16379904, "t": "19:49:42"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 0, "router_acc": 1.0, "coverage": 0.1649, "t": "19:49:51"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 1, "router_acc": 1.0, "coverage": 0.4013, "t": "19:49:52"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 2, "router_acc": 1.0, "coverage": 0.3366, "t": "19:49:53"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 3, "router_acc": 1.0, "coverage": 0.3078, "t": "19:49:53"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 4, "router_acc": 1.0, "coverage": 0.3555, "t": "19:49:54"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 5, "router_acc": 1.0, "coverage": 0.3161, "t": "19:49:54"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 6, "router_acc": 1.0, "coverage": 0.3681, "t": "19:49:55"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 7, "router_acc": 1.0, "coverage": 0.3572, "t": "19:49:56"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 8, "router_acc": 1.0, "coverage": 0.2977, "t": "19:49:56"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 9, "router_acc": 1.0, "coverage": 0.2788, "t": "19:49:57"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 10, "router_acc": 1.0, "coverage": 0.3018, "t": "19:49:58"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 11, "router_acc": 1.0, "coverage": 0.3044, "t": "19:49:58"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 12, "router_acc": 1.0, "coverage": 0.2995, "t": "19:49:59"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 13, "router_acc": 1.0, "coverage": 0.2873, "t": "19:50:00"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 14, "router_acc": 1.0, "coverage": 0.2629, "t": "19:50:00"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 15, "router_acc": 1.0, "coverage": 0.2956, "t": "19:50:01"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 16, "router_acc": 1.0, "coverage": 0.295, "t": "19:50:01"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 17, "router_acc": 1.0, "coverage": 0.3414, "t": "19:50:02"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 18, "router_acc": 1.0, "coverage": 0.3327, "t": "19:50:02"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 19, "router_acc": 1.0, "coverage": 0.3564, "t": "19:50:03"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 20, "router_acc": 1.0, "coverage": 0.3197, "t": "19:50:04"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 21, "router_acc": 1.0, "coverage": 0.3281, "t": "19:50:05"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 22, "router_acc": 1.0, "coverage": 0.3624, "t": "19:50:05"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 23, "router_acc": 1.0, "coverage": 0.4112, "t": "19:50:06"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 24, "router_acc": 1.0, "coverage": 0.4179, "t": "19:50:06"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 25, "router_acc": 1.0, "coverage": 0.396, "t": "19:50:07"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 26, "router_acc": 1.0, "coverage": 0.4042, "t": "19:50:07"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 27, "router_acc": 1.0, "coverage": 0.3861, "t": "19:50:08"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 28, "router_acc": 1.0, "coverage": 0.3789, "t": "19:50:08"}
+{"phase": 12, "event": "built", "arm": "K=1 m=512", "layer": 29, "router_acc": 1.0, "coverage": 0.4359, "t": "19:50:09"}
+{"phase": 12, "event": "base", "data": "wiki", "ppl": 12.7472, "t": "19:50:10"}
+{"phase": 12, "event": "base", "data": "chat", "ppl": 5.1124, "t": "19:50:10"}
+{"phase": 12, "arm": "K=1 m=512", "step": 0, "student_params_M": 118.0, "mlp_macs": 3934720, "mlp_fewer_macs": 13.49, "wiki_ppl": 388528.154, "wiki_kl": 10.55921, "wiki_top1": 0.0146, "chat_ppl": 7144749.5754, "chat_kl": 14.40036, "chat_top1": 0.0004, "t": "19:50:13"}
+{"phase": 12, "arm": "K=1 m=512", "step": 250, "student_params_M": 118.0, "mlp_macs": 3934720, "mlp_fewer_macs": 13.49, "train_kl": 6.51558, "tokens_seen": 1024000, "elapsed_s": 270.9, "wiki_ppl": 536.1439, "wiki_kl": 3.96648, "wiki_top1": 0.1857, "chat_ppl": 809.5112, "chat_kl": 5.31109, "chat_top1": 0.1219, "t": "19:52:53"}
+{"phase": 12, "arm": "K=1 m=512", "step": 500, "student_params_M": 118.0, "mlp_macs": 3934720, "mlp_fewer_macs": 13.49, "train_kl": 4.53284, "tokens_seen": 2048000, "elapsed_s": 431.8, "wiki_ppl": 227.2686, "wiki_kl": 3.11861, "wiki_top1": 0.2598, "chat_ppl": 295.143, "chat_kl": 4.30544, "chat_top1": 0.1952, "t": "19:55:34"}
+{"phase": 12, "arm": "K=1 m=512", "step": 750, "student_params_M": 118.0, "mlp_macs": 3934720, "mlp_fewer_macs": 13.49, "train_kl": 3.88643, "tokens_seen": 3072000, "elapsed_s": 593.0, "wiki_ppl": 160.1181, "wiki_kl": 2.76889, "wiki_top1": 0.2976, "chat_ppl": 188.199, "chat_kl": 3.85375, "chat_top1": 0.2371, "t": "19:58:16"}
+{"phase": 12, "arm": "K=1 m=512", "step": 1000, "student_params_M": 118.0, "mlp_macs": 3934720, "mlp_fewer_macs": 13.49, "train_kl": 3.58535, "tokens_seen": 4096000, "elapsed_s": 754.7, "wiki_ppl": 136.6608, "wiki_kl": 2.61138, "wiki_top1": 0.3163, "chat_ppl": 148.9628, "chat_kl": 3.62123, "chat_top1": 0.2593, "t": "20:00:57"}
+{"phase": 12, "arm": "K=1 m=512", "step": 1250, "student_params_M": 118.0, "mlp_macs": 3934720, "mlp_fewer_macs": 13.49, "train_kl": 3.46812, "tokens_seen": 5120000, "elapsed_s": 916.2, "wiki_ppl": 129.8951, "wiki_kl": 2.55924, "wiki_top1": 0.3266, "chat_ppl": 138.1963, "chat_kl": 3.54416, "chat_top1": 0.2673, "t": "20:03:39"}
+{"phase": 12, "arm": "K=1 m=512", "step": 1500, "student_params_M": 118.0, "mlp_macs": 3934720, "mlp_fewer_macs": 13.49, "train_kl": 3.43964, "tokens_seen": 6144000, "elapsed_s": 1078.0, "wiki_ppl": 128.9174, "wiki_kl": 2.5518, "wiki_top1": 0.3272, "chat_ppl": 137.1996, "chat_kl": 3.53681, "chat_top1": 0.2681, "t": "20:06:21"}
+{"event": "done", "arm": "K=1 m=512", "total_s": 1080.4, "t": "20:06:21"}
