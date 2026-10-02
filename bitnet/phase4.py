@@ -72,6 +72,21 @@ for i in range(0, len(Us), 2048):
         g, = torch.autograd.grad(y, u, torch.randn_like(y))
     Gj += g.double().T @ g.double()
 P_jac, ev_j = top_eig(Gj, 256)
+
+# sparsity of the relu^2 intermediate: oracle per-token top-k neurons (how far an exact-sparse MLP could go)
+with torch.no_grad():
+    ub = Us[:8192].to(torch.bfloat16)
+    g = mlp.gate_proj(ub); h = mlp.act_fn(g) * mlp.up_proj(ub); hn = mlp.ffn_sub_norm(h); y = mlp.down_proj(hn).float()
+    yd = (y - y.mean(0)).pow(2).sum()
+    rec = {"phase": 4, "event": "sparsity", "layer": L, "frac_gate_nonpos": round((g <= 0).float().mean().item(), 4)}
+    e = hn.float().pow(2); es = e.sort(-1, descending=True).values.cumsum(-1) / e.sum(-1, keepdim=True)
+    for k in [k for k in (128, 512, 1024, 2048) if k <= hn.shape[-1]]:
+        top = hn.float().abs().topk(k, -1).indices
+        m = torch.zeros_like(hn).scatter_(-1, top, 1)
+        rec[f"top{k}_energy"] = round(es[:, k - 1].mean().item(), 4)
+        rec[f"top{k}_rel_err"] = round(((mlp.down_proj(hn * m).float() - y).pow(2).sum() / yd).item(), 5)
+    log(a.out, rec)
+    del g, h, hn, y, e, es
 cum = lambda ev, r: (ev[:r].sum() / ev.sum()).item()
 log(a.out, {"phase": 4, "event": "spectra",
             **{f"u_var@{r}": round(cum(ev_u, r), 4) for r in (64, 128, 256)},
