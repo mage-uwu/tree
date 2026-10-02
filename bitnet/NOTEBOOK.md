@@ -106,3 +106,38 @@ recent; exact keys score them; only their values are read):
 → Using the trees to *choose* keys rather than *replace* them is ~40× better in excess KL at equal bits and
 reads <10% of keys and values. Exact keys must still be stored (int8 would do) but are only read for the
 selected ~10%. The recent window matters: pruning on exact scores at tau 4 without it costs KL 0.027.
+
+## Phase 4 — tree MLP, one layer (layer 15), shared-subspace form (`runs/phase4.jsonl`) — **gate FAILED**
+`out = c[leaf] + Q_g M[leaf] P_g (u − μ)`, router in z-space, per-leaf ridge shrunk to the global map;
+calibration 1M tokens (512 windows), shared fit on 98k tokens. Eval 32 wiki + 16 chat windows
+(base wiki 14.021, chat 4.272). Config = input subspace : r_in : r_out : depth.
+
+| config | leaves | MB/layer int8 | out rel err | wiki ppl | wiki KL | chat KL |
+|---|---|---|---|---|---|---|
+| MLP removed (mean output) | – | – | 1.000 | 15.330 | 0.0585 | 0.0457 |
+| jac:64:64:0 (global linear) | 1 | 0.3 | 0.884 | 14.582 | 0.0472 | 0.0484 |
+| jac:64:0:10 (leaf constants) | 1024 | 2.7 | 0.962 | 15.096 | 0.0529 | 0.0453 |
+| jac:64:64:8 | 256 | 2.0 | 0.856 | 14.454 | 0.0449 | 0.0476 |
+| jac:64:64:10 | 1024 | 6.9 | 0.854 | 14.422 | 0.0445 | 0.0469 |
+| pca:64:64:10 | 1024 | 6.9 | 0.849 | 14.300 | 0.0449 | 0.0461 |
+| jac:128:128:10 | 1024 | 19.3 | 0.817 | 14.303 | 0.0417 | 0.0444 |
+| jac:256:64:10 | 1024 | 19.5 | 0.831 | 14.288 | 0.0429 | 0.0460 |
+| jac:256:256:10 | 1024 | 68.0 | 0.778 | 14.299 | 0.0384 | 0.0416 |
+
+(ternary MLP = 3·6912·2560·1.58 bit ≈ 10.5 MB/layer; int8 variants identical to fp32 within noise.)
+
+Why: the MLP at d=2560 is **high-rank**. Top-256 directions hold only 50% of the input variance, 50% of the
+output variance and 37% of E[JᵀJ] (Jacobian energy); top-64: 28% / 26% / 18%. No low-rank or piecewise
+low-rank form at an acceptable size gets near it — even 68 MB/layer recovers only 22% of the variance and a
+third of the KL. Leaf constants alone explain 4%. The tiny model (d=128) hid this: its whole space was rank 128.
+
+**But the relu² intermediate is very sparse in energy** (per-token oracle, layer 15, 8k tokens):
+
+| exact neurons kept per token (of 6912) | 128 | 512 | 1024 | 2048 |
+|---|---|---|---|---|
+| share of ‖h‖² | 0.793 | 0.950 | 0.987 | 0.999 |
+| MLP output rel err | 0.199 | 0.048 | 0.012 | 0.0006 |
+
+41% of gate pre-activations are ≤ 0 (exactly zero neurons). → Pivot: keep the frozen ternary weights and use
+a cheap selector (tree / low-rank gate predictor) to choose which ~15% of neurons to compute exactly
+(phase 4b). This keeps the owner's constraint even more strictly (no fitted output tables at all).

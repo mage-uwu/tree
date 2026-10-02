@@ -1,0 +1,83 @@
+NVIDIA GeForce RTX 3090, 24576 MiB, 580.65.06
+pypi 200 0.154005s
+Collecting transformers==5.18.0
+Collecting accelerate
+Collecting pyarrow
+Collecting huggingface-hub<3.0,>=1.31.0 (from transformers==5.18.0)
+Collecting regex>=2025.10.22 (from transformers==5.18.0)
+Collecting tokenizers<0.24.0,>=0.23.1 (from transformers==5.18.0)
+Collecting typer (from transformers==5.18.0)
+Collecting safetensors>=0.8.0 (from transformers==5.18.0)
+Collecting tqdm>=4.60 (from transformers==5.18.0)
+Collecting click<9.0.0,>=8.4.2 (from huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting hf-xet<2.0.0,>=1.6.0 (from huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting httpx2<3,>=2.0.0 (from huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting httpcore2==2.13.1 (from httpx2<3,>=2.0.0->huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting idna>=3.18 (from httpx2<3,>=2.0.0->huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting truststore>=0.10 (from httpx2<3,>=2.0.0->huggingface-hub<3.0,>=1.31.0->transformers==5.18.0)
+Collecting huggingface-hub<3.0,>=1.31.0 (from transformers==5.18.0)
+Collecting shellingham>=1.3.0 (from typer->transformers==5.18.0)
+Collecting rich>=13.8.0 (from typer->transformers==5.18.0)
+Collecting annotated-doc>=0.0.2 (from typer->transformers==5.18.0)
+Collecting markdown-it-py>=2.2.0 (from rich>=13.8.0->typer->transformers==5.18.0)
+Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=13.8.0->typer->transformers==5.18.0)
+Successfully installed accelerate-1.15.0 annotated-doc-0.0.5 click-8.5.0 hf-xet-1.6.0 huggingface-hub-1.33.0 idna-3.20 markdown-it-py-4.2.0 mdurl-0.1.2 pyarrow-25.0.1 regex-2026.9.29 rich-15.0.0 safetensors-0.8.0 shellingham-1.5.4 tokenizers-0.23.2 tqdm-4.70.1 transformers-5.18.0 typer-0.27.2
+torch 2.8.0+cu128 True
+1c2b626 runs: phase 1 baseline + first phase 2 run (split bug: S>=16 identical)
+=== p24.sh START 01:15:40
+[transformers] You have loaded a BitNet model on CPU and have a CUDA device available, make sure to set your model on a GPU device in order to run your model.
+Loading weights:   0%|          | 0/332 [00:00<?, ?it/s]Loading weights: 100%|██████████| 332/332 [00:00<00:00, 9992.82it/s]
+{"phase": 1, "event": "loaded", "s": 11.8, "layers": 30, "Hq": 20, "Hkv": 5, "hd": 128, "t": "01:15:55"}
+{"phase": 1, "event": "data", "wiki_test_windows": 141, "chat_test_windows": 96, "calib_windows": 128, "t": "01:16:12"}
+[transformers] Both `max_new_tokens` (=60) and `max_length`(=4096) seem to have been set. `max_new_tokens` will take precedence. Please refer to the documentation for more information. (https://huggingface.co/docs/transformers/main/en/main_classes/text_generation)
+{"phase": 1, "event": "generate", "text": "The sky appears blue due to the scattering of sunlight by the molecules in the Earth's atmosphere. This scattering causes shorter blue wavelengths to be scattered more than longer wavelengths, which is why we see the sky as blue.", "t": "01:16:18"}
+{"phase": 1, "event": "peakedness", "layer": 0, "sink_mass": 0.1654, "tau4_keys_read": 0.0586, "tau4_mass_kept": 0.8534, "tau8_keys_read": 0.3511, "tau8_mass_kept": 0.99068, "tau12_keys_read": 0.6493, "tau12_mass_kept": 0.99983, "tau16_keys_read": 0.7645, "tau16_mass_kept": 1.0, "t": "01:16:20"}
+{"phase": 1, "event": "peakedness", "layer": 7, "sink_mass": 0.0448, "tau4_keys_read": 0.0283, "tau4_mass_kept": 0.79952, "tau8_keys_read": 0.2942, "tau8_mass_kept": 0.97975, "tau12_keys_read": 0.782, "tau12_mass_kept": 0.99969, "tau16_keys_read": 0.9683, "tau16_mass_kept": 1.0, "t": "01:16:20"}
+{"phase": 1, "event": "peakedness", "layer": 15, "sink_mass": 0.0294, "tau4_keys_read": 0.0331, "tau4_mass_kept": 0.83047, "tau8_keys_read": 0.3151, "tau8_mass_kept": 0.98158, "tau12_keys_read": 0.8291, "tau12_mass_kept": 0.99975, "tau16_keys_read": 0.9854, "tau16_mass_kept": 1.0, "t": "01:16:20"}
+{"phase": 1, "event": "peakedness", "layer": 22, "sink_mass": 0.0379, "tau4_keys_read": 0.0167, "tau4_mass_kept": 0.81935, "tau8_keys_read": 0.2477, "tau8_mass_kept": 0.9734, "tau12_keys_read": 0.8281, "tau12_mass_kept": 0.99966, "tau16_keys_read": 0.9885, "tau16_mass_kept": 1.0, "t": "01:16:20"}
+{"phase": 1, "event": "peakedness", "layer": 29, "sink_mass": 0.033, "tau4_keys_read": 0.114, "tau4_mass_kept": 0.68187, "tau8_keys_read": 0.7142, "tau8_mass_kept": 0.98443, "tau12_keys_read": 0.9677, "tau12_mass_kept": 0.99991, "tau16_keys_read": 0.998, "tau16_mass_kept": 1.0, "t": "01:16:20"}
+{"phase": 2, "event": "identity_check", "kl": 0.0, "top1": 1.0, "t": "01:16:22"}
+{"phase": 2, "event": "calib", "layer": 15, "keys_per_head": 262144, "t": "01:16:48"}
+{"phase": 2, "layer": 15, "S": 16, "D": 4, "bytes_per_key_per_kvhead": 8.0, "exact_sink": true, "fit_s": 7.8, "degenerate_nodes": 0.0, "score_rel_err": 0.08958, "wiki_ppl": 13.6398, "wiki_kl": 0.01545, "wiki_top1": 0.9333, "chat_ppl": 4.34, "chat_kl": 0.01362, "chat_top1": 0.9509, "t": "01:17:39"}
+{"phase": 2, "layer": 15, "S": 32, "D": 4, "bytes_per_key_per_kvhead": 16.0, "exact_sink": true, "fit_s": 15.0, "degenerate_nodes": 0.0, "score_rel_err": 0.0539, "wiki_ppl": 13.6236, "wiki_kl": 0.00867, "wiki_top1": 0.9496, "chat_ppl": 4.3229, "chat_kl": 0.0077, "chat_top1": 0.963, "t": "01:18:37"}
+{"phase": 2, "layer": 15, "S": 48, "D": 4, "bytes_per_key_per_kvhead": 24.0, "exact_sink": true, "fit_s": 22.6, "degenerate_nodes": 0.0, "score_rel_err": 0.03528, "wiki_ppl": 13.603, "wiki_kl": 0.00565, "wiki_top1": 0.959, "chat_ppl": 4.3186, "chat_kl": 0.00493, "chat_top1": 0.9705, "t": "01:19:43"}
+{"phase": 2, "layer": 15, "S": 64, "D": 4, "bytes_per_key_per_kvhead": 32.0, "exact_sink": true, "fit_s": 30.1, "degenerate_nodes": 0.0, "score_rel_err": 0.02337, "wiki_ppl": 13.5975, "wiki_kl": 0.00405, "wiki_top1": 0.9649, "chat_ppl": 4.3129, "chat_kl": 0.00353, "chat_top1": 0.9757, "t": "01:20:57"}
+{"phase": 2, "layer": 15, "S": 96, "D": 4, "bytes_per_key_per_kvhead": 48.0, "exact_sink": true, "fit_s": 45.1, "degenerate_nodes": 0.0, "score_rel_err": 0.01067, "wiki_ppl": 13.5848, "wiki_kl": 0.00263, "wiki_top1": 0.9708, "chat_ppl": 4.3094, "chat_kl": 0.00216, "chat_top1": 0.9798, "t": "01:22:26"}
+{"phase": 2, "layer": 15, "S": 64, "D": 4, "bytes_per_key_per_kvhead": 32.0, "exact_sink": false, "fit_s": 30.1, "degenerate_nodes": 0.0, "score_rel_err": 0.02341, "wiki_ppl": 13.5981, "wiki_kl": 0.00406, "wiki_top1": 0.9643, "chat_ppl": 4.3097, "chat_kl": 0.00343, "chat_top1": 0.9742, "t": "01:23:40"}
+{"phase": 2, "event": "calib", "layer": 2, "keys_per_head": 262144, "t": "01:24:07"}
+{"phase": 2, "layer": 2, "S": 16, "D": 4, "bytes_per_key_per_kvhead": 8.0, "exact_sink": true, "fit_s": 7.8, "degenerate_nodes": 0.0, "score_rel_err": 0.05096, "wiki_ppl": 14.221, "wiki_kl": 0.06994, "wiki_top1": 0.8703, "chat_ppl": 4.2776, "chat_kl": 0.04348, "chat_top1": 0.9209, "t": "01:24:58"}
+{"phase": 2, "layer": 2, "S": 32, "D": 4, "bytes_per_key_per_kvhead": 16.0, "exact_sink": true, "fit_s": 15.1, "degenerate_nodes": 0.0, "score_rel_err": 0.02962, "wiki_ppl": 13.792, "wiki_kl": 0.03097, "wiki_top1": 0.9108, "chat_ppl": 4.2923, "chat_kl": 0.02012, "chat_top1": 0.9444, "t": "01:25:56"}
+{"phase": 2, "layer": 2, "S": 48, "D": 4, "bytes_per_key_per_kvhead": 24.0, "exact_sink": true, "fit_s": 22.7, "degenerate_nodes": 0.0, "score_rel_err": 0.01899, "wiki_ppl": 13.6838, "wiki_kl": 0.01867, "wiki_top1": 0.9286, "chat_ppl": 4.304, "chat_kl": 0.01239, "chat_top1": 0.9554, "t": "01:27:02"}
+{"phase": 2, "layer": 2, "S": 64, "D": 4, "bytes_per_key_per_kvhead": 32.0, "exact_sink": true, "fit_s": 30.2, "degenerate_nodes": 0.0, "score_rel_err": 0.01263, "wiki_ppl": 13.6204, "wiki_kl": 0.01066, "wiki_top1": 0.9449, "chat_ppl": 4.3008, "chat_kl": 0.00734, "chat_top1": 0.9655, "t": "01:28:16"}
+{"phase": 2, "layer": 2, "S": 96, "D": 4, "bytes_per_key_per_kvhead": 48.0, "exact_sink": true, "fit_s": 45.1, "degenerate_nodes": 0.0, "score_rel_err": 0.00572, "wiki_ppl": 13.5863, "wiki_kl": 0.00485, "wiki_top1": 0.9621, "chat_ppl": 4.2982, "chat_kl": 0.00332, "chat_top1": 0.9751, "t": "01:29:45"}
+{"phase": 2, "layer": 2, "S": 64, "D": 4, "bytes_per_key_per_kvhead": 32.0, "exact_sink": false, "fit_s": 30.1, "degenerate_nodes": 0.0, "score_rel_err": 0.01261, "wiki_ppl": 13.6311, "wiki_kl": 0.0109, "wiki_top1": 0.9452, "chat_ppl": 4.3009, "chat_kl": 0.00761, "chat_top1": 0.9636, "t": "01:30:59"}
+{"phase": 2, "layer": 28, "S": 64, "D": 4, "bytes_per_key_per_kvhead": 32.0, "exact_sink": true, "fit_s": 27.4, "degenerate_nodes": 0.1569, "score_rel_err": 0.01599, "wiki_ppl": 13.5638, "wiki_kl": 0.00209, "wiki_top1": 0.9743, "chat_ppl": 4.3095, "chat_kl": 0.00225, "chat_top1": 0.9809, "t": "01:32:37"}
+{"event": "done", "total_s": 1013.9, "t": "01:32:37"}
+[transformers] You have loaded a BitNet model on CPU and have a CUDA device available, make sure to set your model on a GPU device in order to run your model.
+Loading weights:   0%|          | 0/332 [00:00<?, ?it/s]Loading weights: 100%|██████████| 332/332 [00:00<00:00, 9286.30it/s]
+{"phase": 4, "event": "data", "layer": 15, "calib_windows": 512, "calib_tokens": 1048576, "t": "01:33:02"}
+{"phase": 4, "event": "subsample", "tokens": 98304, "u_rms": 1.0241261720657349, "y_rms": 276.49761962890625, "t": "01:33:09"}
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+{"phase": 4, "event": "sparsity", "layer": 15, "frac_gate_nonpos": 0.414, "top128_energy": 0.7932, "top128_rel_err": 0.19937, "top512_energy": 0.9498, "top512_rel_err": 0.04834, "top1024_energy": 0.9874, "top1024_rel_err": 0.01235, "top2048_energy": 0.9992, "top2048_rel_err": 0.0006, "t": "01:33:13"}
+{"phase": 4, "event": "spectra", "u_var@64": 0.2753, "u_var@128": 0.3746, "u_var@256": 0.4966, "y_var@64": 0.2591, "y_var@128": 0.3628, "y_var@256": 0.4999, "jac@64": 0.1833, "jac@128": 0.2591, "jac@256": 0.3707, "t": "01:33:13"}
+{"phase": 4, "event": "base", "data": "wiki", "ppl": 14.0211, "t": "01:33:21"}
+{"phase": 4, "event": "base", "data": "chat", "ppl": 4.2721, "t": "01:33:25"}
+{"phase": 4, "layer": 15, "config": "mean_output (MLP removed)", "rel_err": 1.0, "wiki_ppl": 15.3299, "wiki_kl": 0.05853, "wiki_top1": 0.8716, "chat_ppl": 4.3346, "chat_kl": 0.04571, "chat_top1": 0.9113, "t": "01:33:48"}
+{"phase": 4, "layer": 15, "config": "jac:64:64:0", "int8": false, "leaves": 1, "rel_err": 0.88438, "MB_per_layer_int8": 0.32, "macs": 331776, "dense_macs": 53084160, "fit_s": 57.7, "empty_leaves": 0, "min_count": 1048576, "median_count": 1048576, "wiki_ppl": 14.5815, "wiki_kl": 0.04724, "wiki_top1": 0.8866, "chat_ppl": 4.3134, "chat_kl": 0.04837, "chat_top1": 0.9098, "t": "01:35:09"}
+{"phase": 4, "layer": 15, "config": "jac:64:64:0", "int8": true, "leaves": 1, "rel_err": 0.88451, "MB_per_layer_int8": 0.32, "macs": 331776, "dense_macs": 53084160, "fit_s": 57.7, "empty_leaves": 0, "min_count": 1048576, "median_count": 1048576, "wiki_ppl": 14.5829, "wiki_kl": 0.04726, "wiki_top1": 0.8876, "chat_ppl": 4.3115, "chat_kl": 0.04843, "chat_top1": 0.9093, "t": "01:35:32"}
+{"phase": 4, "layer": 15, "config": "jac:64:0:10", "int8": false, "leaves": 1024, "rel_err": 0.96185, "MB_per_layer_int8": 2.72, "macs": 164480, "dense_macs": 53084160, "fit_s": 71.6, "empty_leaves": 0, "min_count": 160, "median_count": 1010, "wiki_ppl": 15.0963, "wiki_kl": 0.05293, "wiki_top1": 0.8775, "chat_ppl": 4.3315, "chat_kl": 0.04528, "chat_top1": 0.9123, "t": "01:37:07"}
+{"phase": 4, "layer": 15, "config": "jac:64:0:10", "int8": true, "leaves": 1024, "rel_err": 0.9619, "MB_per_layer_int8": 2.72, "macs": 164480, "dense_macs": 53084160, "fit_s": 71.6, "empty_leaves": 0, "min_count": 160, "median_count": 1010, "wiki_ppl": 15.0945, "wiki_kl": 0.0529, "wiki_top1": 0.8761, "chat_ppl": 4.3312, "chat_kl": 0.04524, "chat_top1": 0.9114, "t": "01:37:31"}
+{"phase": 4, "layer": 15, "config": "jac:64:64:8", "int8": false, "leaves": 256, "rel_err": 0.85606, "MB_per_layer_int8": 1.95, "macs": 332288, "dense_macs": 53084160, "fit_s": 62.6, "empty_leaves": 0, "min_count": 1708, "median_count": 4087, "wiki_ppl": 14.4542, "wiki_kl": 0.04493, "wiki_top1": 0.8892, "chat_ppl": 4.3175, "chat_kl": 0.04762, "chat_top1": 0.9091, "t": "01:38:57"}
+{"phase": 4, "layer": 15, "config": "jac:64:64:8", "int8": true, "leaves": 256, "rel_err": 0.85623, "MB_per_layer_int8": 1.95, "macs": 332288, "dense_macs": 53084160, "fit_s": 62.6, "empty_leaves": 0, "min_count": 1708, "median_count": 4087, "wiki_ppl": 14.4474, "wiki_kl": 0.04492, "wiki_top1": 0.8895, "chat_ppl": 4.3183, "chat_kl": 0.04744, "chat_top1": 0.9097, "t": "01:39:20"}
+{"phase": 4, "layer": 15, "config": "jac:64:64:10", "int8": false, "leaves": 1024, "rel_err": 0.85446, "MB_per_layer_int8": 6.88, "macs": 332416, "dense_macs": 53084160, "fit_s": 75.9, "empty_leaves": 0, "min_count": 160, "median_count": 1010, "wiki_ppl": 14.4218, "wiki_kl": 0.04452, "wiki_top1": 0.8896, "chat_ppl": 4.3209, "chat_kl": 0.04692, "chat_top1": 0.9093, "t": "01:40:59"}
+{"phase": 4, "layer": 15, "config": "jac:64:64:10", "int8": true, "leaves": 1024, "rel_err": 0.85465, "MB_per_layer_int8": 6.88, "macs": 332416, "dense_macs": 53084160, "fit_s": 75.9, "empty_leaves": 0, "min_count": 160, "median_count": 1010, "wiki_ppl": 14.42, "wiki_kl": 0.04448, "wiki_top1": 0.8897, "chat_ppl": 4.3187, "chat_kl": 0.04678, "chat_top1": 0.9098, "t": "01:41:23"}
+{"phase": 4, "layer": 15, "config": "pca:64:64:10", "int8": false, "leaves": 1024, "rel_err": 0.84911, "MB_per_layer_int8": 6.88, "macs": 332416, "dense_macs": 53084160, "fit_s": 75.7, "empty_leaves": 0, "min_count": 435, "median_count": 988, "wiki_ppl": 14.3, "wiki_kl": 0.04487, "wiki_top1": 0.8893, "chat_ppl": 4.3282, "chat_kl": 0.0461, "chat_top1": 0.9101, "t": "01:43:02"}
+{"phase": 4, "layer": 15, "config": "pca:64:64:10", "int8": true, "leaves": 1024, "rel_err": 0.84915, "MB_per_layer_int8": 6.88, "macs": 332416, "dense_macs": 53084160, "fit_s": 75.7, "empty_leaves": 0, "min_count": 435, "median_count": 988, "wiki_ppl": 14.2997, "wiki_kl": 0.04491, "wiki_top1": 0.8893, "chat_ppl": 4.3257, "chat_kl": 0.0461, "chat_top1": 0.9093, "t": "01:43:25"}
+{"phase": 4, "layer": 15, "config": "jac:128:128:10", "int8": false, "leaves": 1024, "rel_err": 0.81666, "MB_per_layer_int8": 19.25, "macs": 673024, "dense_macs": 53084160, "fit_s": 76.3, "empty_leaves": 0, "min_count": 377, "median_count": 994, "wiki_ppl": 14.3026, "wiki_kl": 0.04169, "wiki_top1": 0.8924, "chat_ppl": 4.3171, "chat_kl": 0.04436, "chat_top1": 0.9114, "t": "01:45:05"}
+{"phase": 4, "layer": 15, "config": "jac:128:128:10", "int8": true, "leaves": 1024, "rel_err": 0.81725, "MB_per_layer_int8": 19.25, "macs": 673024, "dense_macs": 53084160, "fit_s": 76.3, "empty_leaves": 0, "min_count": 377, "median_count": 994, "wiki_ppl": 14.3033, "wiki_kl": 0.04168, "wiki_top1": 0.8935, "chat_ppl": 4.3186, "chat_kl": 0.04442, "chat_top1": 0.9119, "t": "01:45:28"}
+{"phase": 4, "layer": 15, "config": "jac:256:64:10", "int8": false, "leaves": 1024, "rel_err": 0.83144, "MB_per_layer_int8": 19.53, "macs": 838144, "dense_macs": 53084160, "fit_s": 77.0, "empty_leaves": 0, "min_count": 341, "median_count": 964, "wiki_ppl": 14.288, "wiki_kl": 0.04291, "wiki_top1": 0.892, "chat_ppl": 4.3108, "chat_kl": 0.04598, "chat_top1": 0.911, "t": "01:47:08"}
+{"phase": 4, "layer": 15, "config": "jac:256:64:10", "int8": true, "leaves": 1024, "rel_err": 0.83164, "MB_per_layer_int8": 19.53, "macs": 838144, "dense_macs": 53084160, "fit_s": 77.0, "empty_leaves": 0, "min_count": 341, "median_count": 964, "wiki_ppl": 14.2878, "wiki_kl": 0.04284, "wiki_top1": 0.892, "chat_ppl": 4.3112, "chat_kl": 0.04582, "chat_top1": 0.9112, "t": "01:47:32"}
+{"phase": 4, "layer": 15, "config": "jac:256:256:10", "int8": false, "leaves": 1024, "rel_err": 0.77823, "MB_per_layer_int8": 68.0, "macs": 1378816, "dense_macs": 53084160, "fit_s": 77.6, "empty_leaves": 0, "min_count": 341, "median_count": 964, "wiki_ppl": 14.2987, "wiki_kl": 0.03838, "wiki_top1": 0.8975, "chat_ppl": 4.3164, "chat_kl": 0.04164, "chat_top1": 0.9155, "t": "01:49:13"}
+{"phase": 4, "layer": 15, "config": "jac:256:256:10", "int8": true, "leaves": 1024, "rel_err": 0.77851, "MB_per_layer_int8": 68.0, "macs": 1378816, "dense_macs": 53084160, "fit_s": 77.6, "empty_leaves": 0, "min_count": 341, "median_count": 964, "wiki_ppl": 14.2997, "wiki_kl": 0.0384, "wiki_top1": 0.898, "chat_ppl": 4.3156, "chat_kl": 0.04155, "chat_top1": 0.9154, "t": "01:49:36"}
+{"event": "done", "total_s": 1014.6, "t": "01:49:36"}
+=== ALL DONE 01:49:38
