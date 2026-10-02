@@ -74,3 +74,35 @@ Gate 2: **passed** (monotone in bits, small at ≥32 B/key). Observations:
 - If per-layer KLs add up (they did almost linearly on the tiny model), all 30 layers at 32 B/key would cost
   KL ≈ 0.15–0.2. Plain replacement looks expensive at scale → test **select + rescore** (tree codes only
   choose candidate keys; exact keys score them; only their values are read).
+
+## Phase 2b — attention: TAU value pruning, select + rescore (`runs/phase2b.jsonl`)
+Custom attention registered with transformers' AttentionInterface (`common.tree_attention`, fp32). **Floor**:
+this exact fp32 path vs stock bf16 sdpa already differs by KL 0.0026 (all layers) / 0.0014 (one layer) — the
+model's own numerical noise level. Compare against the floor, not 0. Eval: 32 wiki + 16 chat windows.
+
+**Value pruning on exact scores, all 30 layers** (drop keys whose exact score is < max − tau_v; queries with
+≥1024 keys):
+
+| tau_v | 4 | 6 | 8 | 10 | 12 | none (floor) |
+|---|---|---|---|---|---|---|
+| keys/values read | 4.1% | 14% | 35% | 63% | 83% | 100% |
+| wiki KL | 0.0274 | 0.0060 | 0.0029 | 0.0026 | 0.0026 | 0.0026 |
+| chat KL | 0.0174 | 0.0042 | 0.0022 | 0.0019 | 0.0019 | 0.0018 |
+
+→ Open question 3: **yes**. TAU=8 skips ~65% of value reads for +0.0003 KL; layer 29 is the least peaked.
+
+**Select + rescore, one layer** (trees choose keys within tau_sel of the max tree score + sink + 64 most
+recent; exact keys score them; only their values are read):
+
+| layer 15 | wiki KL | read |
+|---|---|---|
+| floor (same fp32 path) | 0.00144 | 100% |
+| replace, 16 trees (8 B/key) | 0.01540 | 100% |
+| select, 16 trees, tau_sel=4 | **0.00181** | **9.4%** |
+| select, 16 trees, tau_sel=8 | 0.00145 | 63% |
+| replace, 32 trees (16 B/key) | 0.00864 | 100% |
+| select, 32 trees, tau_sel=4 | **0.00180** | **7.9%** |
+
+→ Using the trees to *choose* keys rather than *replace* them is ~40× better in excess KL at equal bits and
+reads <10% of keys and values. Exact keys must still be stored (int8 would do) but are only read for the
+selected ~10%. The recent window matters: pruning on exact scores at tau 4 without it costs KL 0.027.
