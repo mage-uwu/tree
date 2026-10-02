@@ -8,7 +8,9 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--out", default="runs/phase3.jsonl")
 ap.add_argument("--T", type=int, default=2048)
 ap.add_argument("--configs", default="32,48,64")
-ap.add_argument("--exact_sink", type=int, default=0)
+ap.add_argument("--exact_sink", type=int, default=1)
+ap.add_argument("--tau_sel", type=float, default=0)              # >0: select+rescore mode
+ap.add_argument("--recent", type=int, default=64)
 ap.add_argument("--calib_wiki", type=int, default=96)
 ap.add_argument("--calib_chat", type=int, default=32)
 ap.add_argument("--eval_wiki", type=int, default=0)               # 0 = all
@@ -57,22 +59,27 @@ def capture(L, X):
 
 
 for S in map(int, a.configs.split(",")):
-    t = time.time(); STATE.keys = {}
+    t = time.time(); STATE.keys = {}; STATE.attn = {}; STATE.select = set()
     for L in range(NL):
         K, Sq = capture(L, calib)
         kt = KeyTrees(Hkv, S, 4, hd, exact_sink=bool(a.exact_sink)).to(dev)
         kt.fit(K, Sq)
         STATE.keys[L] = kt
+        if a.tau_sel > 0:
+            STATE.select.add(L); STATE.attn[L] = {"tau_sel": a.tau_sel, "recent": a.recent}
         del K
     fit_s = time.time() - t
-    rec = {"phase": 3, "S": S, "D": 4, "exact_sink": bool(a.exact_sink), "bytes_per_key_per_kvhead": S / 2,
+    STATE.attn_stats = {}
+    rec = {"phase": 3, "mode": "select+rescore" if a.tau_sel > 0 else "replace", "tau_sel": a.tau_sel, "S": S, "D": 4, "exact_sink": bool(a.exact_sink), "bytes_per_key_per_kvhead": S / 2,
            "kv_cache_key_bytes_per_token": NL * Hkv * S // 2, "fp16_key_bytes_per_token": NL * Hkv * hd * 2, "fit_s": round(fit_s, 1)}
     for name, X in [("wiki", wiki_test), ("chat", chat_test)]:
         r = evaluate(model, X, a.bs, kl=True, device=dev)
         rec.update({f"{name}_ppl": round(r["ppl"], 4), f"{name}_kl": round(r["kl"], 5), f"{name}_top1": round(r["top1_agree"], 4)})
+    if STATE.attn_stats:
+        rec["read_frac_mean"] = round(sum(k / n for k, n in STATE.attn_stats.values()) / len(STATE.attn_stats), 4)
     log(a.out, rec)
     if a.save:
         torch.save({L: kt.state_dict() for L, kt in STATE.keys.items()} | {"S": S, "D": 4, "exact_sink": bool(a.exact_sink)},
                    f"{a.save}/keytrees_S{S}.pt")
-    STATE.keys = {}
+    STATE.keys = {}; STATE.attn = {}; STATE.select = set()
 log(a.out, {"event": "done", "total_s": round(time.time() - t0, 1)})
