@@ -22,6 +22,9 @@ ap.add_argument("--cands", default="1536,2048,3072")
 ap.add_argument("--frac", type=float, default=0.99)
 ap.add_argument("--partial", default="")                          # input dims m for partial-sum scoring, e.g. 256,512
 ap.add_argument("--partial_cands", default="2048,3072")
+ap.add_argument("--hybrid", default="")                           # m:S:C list, e.g. 128:32:2048,256:32:2048
+ap.add_argument("--all_partial", default="")                      # all-layer partial configs m:C
+ap.add_argument("--all_hybrid", default="")                       # all-layer hybrid configs m:S:C
 ap.add_argument("--all", default="32:2048,32:3072,64:2048")     # all-layer configs S:C ("" to skip)
 ap.add_argument("--calib_windows", type=int, default=48)
 ap.add_argument("--eval_wiki", type=int, default=32)
@@ -61,6 +64,33 @@ log(a.out, {"event": "calib", "tokens": n[0], "s": round(time.time() - t0, 1)})
 
 STAT = {"cand_energy": 0.0, "k": 0.0, "n": 0}
 
+CRES = {}
+def residual_moments(l, m):
+    """E[r r^T] with r = x minus its top-m |x| entries (int8-quantized MLP input of layer l), on 16 calib windows"""
+    if (l, m) in CRES: return CRES[(l, m)]
+    acc = torch.zeros(d, d, device=dev, dtype=torch.float64); cnt = [0]
+    class Stop(Exception): pass
+    def cap(ll, u, y):
+        if ll != l: return
+        x = ActQuant.apply(u.reshape(-1, d)).float()
+        J = x.abs().topk(m, -1).indices
+        r = x.scatter(-1, J, 0.0).double(); acc.add_(r.T @ r); cnt[0] += len(r)
+        raise Stop
+    STATE.mlp_capture = cap; STATE.enabled = False
+    with torch.no_grad():
+        for i in range(0, 16, 2):
+            try: model.model(calib[i:i + 2].to(dev))
+            except Stop: pass
+    STATE.mlp_capture = None; STATE.enabled = True
+    CRES[(l, m)] = (acc / cnt[0]).float()
+    return CRES[(l, m)]
+
+
+def fit_res_trees(l, S, m):
+    W = ternary(model.model.layers[l].mlp.gate_proj.weight.float())
+    kt = KeyTrees(1, S, 4, d).to(dev); kt.fit(W[None], residual_moments(l, m)[None])
+    return kt.encode(W[None])[0][0], W
+
 
 def fit_trees(l, S):
     W = ternary(model.model.layers[l].mlp.gate_proj.weight.float())
@@ -68,7 +98,7 @@ def fit_trees(l, S):
     return kt.encode(W[None])[0][0], W                           # W_hat (F,d), W
 
 
-def tree_mlp(mlp, What, Cn, frac, mdim=0):
+def tree_mlp(mlp, What, Cn, frac, mdim=0, Wres=None):
     def f(u):
         sh = u.shape; U = u.reshape(-1, d); out = []
         for i in range(0, len(U), 4096):
@@ -79,6 +109,7 @@ def tree_mlp(mlp, What, Cn, frac, mdim=0):
                 J = xq.abs().topk(mdim, -1).indices
                 xs = torch.zeros_like(xq).scatter_(-1, J, xq.gather(-1, J))
                 gh = xs @ What.T
+                if Wres is not None: gh = gh + (xq - xs) @ Wres.T             # tree estimate of the remainder
                 cand = torch.zeros_like(g, dtype=torch.bool).scatter_(-1, gh.topk(Cn, -1).indices, True)
             elif What is None:
                 cand = torch.ones_like(g, dtype=torch.bool)
@@ -103,7 +134,7 @@ def ev(rec, wiki, chat):
         rec.update({f"{name}_ppl": round(r["ppl"], 4), f"{name}_kl": round(r["kl"], 5), f"{name}_top1": round(r["top1_agree"], 4)})
     if STAT["n"]:
         rec["cand_energy_share"] = round(STAT["cand_energy"] / STAT["n"], 5); rec["mean_k"] = round(STAT["k"] / STAT["n"], 1)
-        S, Cn, m = rec.get("S", 0), rec.get("C", F), rec.get("m", 0)
+        S, Cn, m = rec.get("S", 0) or 0, rec.get("C", F), rec.get("m", 0)
         rec["mlp_macs"] = int(S * 16 * d + m * F + (Cn if (S or m) else F) * d + 2 * rec["mean_k"] * d)
         rec["lookup_bytes"] = F * S // 2
     rec["dense_mlp_macs"] = 3 * F * d
@@ -120,6 +151,11 @@ for L in map(int, filter(None, a.layers.split(","))):
         for Cn in map(int, a.partial_cands.split(",")):
             STATE.mlps = {L: tree_mlp(mlp, W, Cn, a.frac, m)}
             ev({"layer": L, "sel": "partial-input exact sum", "m": m, "C": Cn}, W8, C8)
+    for cfg in filter(None, a.hybrid.split(",")):
+        m, S, Cn = map(int, cfg.split(":"))
+        Wres, W = fit_res_trees(L, S, m)
+        STATE.mlps = {L: tree_mlp(mlp, W, Cn, a.frac, m, Wres)}
+        ev({"layer": L, "sel": "hybrid partial+tree", "m": m, "S": S, "C": Cn}, W8, C8)
     for S in map(int, filter(None, a.trees.split(","))):
         t = time.time(); What, W = fit_trees(L, S); fs = time.time() - t
         # score quality on held-out-ish inputs: correlation of tree gate scores with exact
@@ -141,5 +177,20 @@ for cfg in filter(None, a.all.split(",")):
     STATE.mlps = mlps
     Wa = wiki_test[:a.all_eval_wiki] if a.all_eval_wiki else wiki_test
     ev({"layer": "all", "sel": "tree select+rescore", "S": S, "C": Cn, "fit_s": round(time.time() - t, 1)}, Wa, chat_test[:a.all_eval_chat])
+    STATE.mlps = {}
+Wa = wiki_test[:a.all_eval_wiki] if a.all_eval_wiki else wiki_test
+for cfg in filter(None, a.all_partial.split(",")):
+    m, Cn = map(int, cfg.split(":"))
+    STATE.mlps = {l: tree_mlp(model.model.layers[l].mlp, ternary(model.model.layers[l].mlp.gate_proj.weight.float()), Cn, a.frac, m) for l in range(NL)}
+    ev({"layer": "all", "sel": "partial-input exact sum", "m": m, "C": Cn}, Wa, chat_test[:a.all_eval_chat])
+    STATE.mlps = {}
+for cfg in filter(None, a.all_hybrid.split(",")):
+    m, S, Cn = map(int, cfg.split(":"))
+    mlps = {}
+    for l in range(NL):
+        Wres, W = fit_res_trees(l, S, m)
+        mlps[l] = tree_mlp(model.model.layers[l].mlp, W, Cn, a.frac, m, Wres)
+    STATE.mlps = mlps
+    ev({"layer": "all", "sel": "hybrid partial+tree", "m": m, "S": S, "C": Cn}, Wa, chat_test[:a.all_eval_chat])
     STATE.mlps = {}
 log(a.out, {"event": "done", "total_s": round(time.time() - t0, 1)})
