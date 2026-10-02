@@ -812,6 +812,36 @@ ggml_tensor * tree_bitnet_attn(ggml_context * ctx, ggml_tensor * q_cur, ggml_ten
     return ggml_custom_4d(ctx, GGML_TYPE_F32, (int64_t)hd * Hq, T, 1, 1, a3, 1, op_tmerge, GGML_N_TASKS_MAX, &g_attn_par[il]);
 }
 
+
+// ------------------------------------------------------------------ TEAL-style activation sparsity (quality experiment)
+static float g_teal[4] = {0, 0, 0, 0};
+static bool teal_cfg() {
+    static bool on = [] { const char * s = getenv("TREE_TEAL"); if (!s) return false;
+        sscanf(s, "%f:%f:%f:%f", &g_teal[0], &g_teal[1], &g_teal[2], &g_teal[3]);
+        fprintf(stderr, "tree-bitnet: TEAL sparsity qkv %.2f o %.2f gate/up %.2f down %.2f\n", g_teal[0], g_teal[1], g_teal[2], g_teal[3]);
+        return true; }();
+    return on;
+}
+static void op_teal(ggml_tensor * dst, int ith, int nth, void * ud) {
+    const ggml_tensor * x = dst->src[0]; const float frac = g_teal[(int)(intptr_t)ud];
+    const int n = (int)x->ne[0], T = (int)x->ne[1], k = (int)lrintf(frac * n);
+    std::vector<float> a(n);
+    int lo, hi; part(T, ith, nth, lo, hi);
+    for (int t = lo; t < hi; t++) {
+        const float * xr = (const float *)((const char *)x->data + t * x->nb[1]); float * o = (float *)((char *)dst->data + t * dst->nb[1]);
+        for (int i = 0; i < n; i++) a[i] = fabsf(xr[i]);
+        std::nth_element(a.begin(), a.begin() + k, a.end());
+        const float thr = a[k];                                           // keep |x| >= k-th smallest magnitude
+        for (int i = 0; i < n; i++) o[i] = fabsf(xr[i]) >= thr ? xr[i] : 0.f;
+    }
+}
+ggml_tensor * tree_bitnet_teal(ggml_context * ctx, ggml_tensor * x, int site, int) {
+    if (!teal_cfg() || g_teal[site] <= 0 || x->type != GGML_TYPE_F32) return x;
+    ggml_tensor * xc = ggml_is_contiguous(x) ? x : ggml_cont(ctx, x);
+    ggml_tensor * args[1] = {xc};
+    return ggml_custom_4d(ctx, GGML_TYPE_F32, xc->ne[0], xc->ne[1], xc->ne[2], xc->ne[3], args, 1, op_teal, GGML_N_TASKS_MAX, (void *)(intptr_t)site);
+}
+
 #if defined(__clang__)
 #pragma clang attribute pop
 #endif

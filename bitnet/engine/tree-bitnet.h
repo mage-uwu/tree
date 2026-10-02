@@ -35,3 +35,8 @@ ggml_tensor * tree_bitnet_kenc(ggml_context * ctx, ggml_tensor * k_cur, ggml_ten
 // deps: tensors that must be computed first (key codes, cache stores). Returns [hd*n_head, n_tokens].
 ggml_tensor * tree_bitnet_attn(ggml_context * ctx, ggml_tensor * q_cur, ggml_tensor * k, ggml_tensor * v,
                                ggml_tensor * kq_mask, ggml_tensor ** deps, int n_deps, float kq_scale, int il);
+
+// TEAL-style activation sparsity (quality experiment): TREE_TEAL=a:o:f:d zeroes, per token, that fraction of the
+// smallest-|x| entries of the input to the q/k/v projections (a), the output projection (o), gate/up (f) and down (d).
+// Returns x unchanged when disabled or the site's fraction is 0.
+ggml_tensor * tree_bitnet_teal(ggml_context * ctx, ggml_tensor * x, int site, int il);

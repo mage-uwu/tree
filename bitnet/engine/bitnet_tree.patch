@@ -11,7 +11,7 @@ index 6448a8427..68de692eb 100644
              llama-arch.cpp
              llama-batch.cpp
 diff --git a/src/models/bitnet.cpp b/src/models/bitnet.cpp
-index 985c8d6fc..702dd29c4 100644
+index 985c8d6fc..231b55ae4 100644
 --- a/src/models/bitnet.cpp
 +++ b/src/models/bitnet.cpp
 @@ -1,4 +1,6 @@
@@ -21,7 +21,15 @@ index 985c8d6fc..702dd29c4 100644
  
  void llama_model_bitnet::load_arch_hparams(llama_model_loader & ml) {
      ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS, hparams.f_norm_rms_eps);
-@@ -95,9 +97,33 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
+@@ -73,6 +75,7 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
+                 model.layers[il].attn_norm, NULL,
+                 LLM_NORM_RMS, il);
+         cb(cur, "attn_norm", il);
++        cur = tree_bitnet_teal(ctx0, cur, 0, il);
+ 
+         // self-attention
+         {
+@@ -95,14 +98,39 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
              cb(Kcur, "Kcur", il);
              cb(Vcur, "Vcur", il);
  
@@ -55,10 +63,19 @@ index 985c8d6fc..702dd29c4 100644
  
              cur = build_norm(cur,
                      model.layers[il].attn_sub_norm, NULL,
-@@ -125,12 +151,20 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
+                     LLM_NORM_RMS, il);
+             cb(cur, "attn_sub_norm", il);
++            cur = tree_bitnet_teal(ctx0, cur, 1, il);
+ 
+             cur = build_lora_mm(model.layers[il].wo, cur, model.layers[il].wo_s);
+             if (model.layers[il].wo_b) {
+@@ -124,22 +152,33 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
+                 model.layers[il].ffn_norm, NULL,
                  LLM_NORM_RMS, il);
          cb(cur, "ffn_norm", il);
- 
+-
++        cur = tree_bitnet_teal(ctx0, cur, 2, il);
++
 +        ggml_tensor * tree_ffn = arch == LLM_ARCH_BITNET_B158 && !model.layers[il].ffn_up_s && !model.layers[il].ffn_gate_s && !model.layers[il].ffn_down_s
 +            ? tree_bitnet_ffn(ctx0, cur, model.layers[il].ffn_gate, model.layers[il].ffn_up, model.layers[il].ffn_down,
 +                              model.layers[il].ffn_sub_norm, hparams.f_norm_rms_eps, il, (int) cur->ne[1])
@@ -77,7 +94,10 @@ index 985c8d6fc..702dd29c4 100644
          cb(cur, "ffn_sub_out", il);
  
          cur = build_norm(cur,
-@@ -140,6 +174,7 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
+                 model.layers[il].ffn_sub_norm, NULL,
+                 LLM_NORM_RMS, il);
+         cb(cur, "ffn_sub_norm", il);
++        cur = tree_bitnet_teal(ctx0, cur, 3, il);
  
          cur = build_lora_mm(model.layers[il].ffn_down, cur, model.layers[il].ffn_down_s);
          cb(cur, "ffn_down", il);
@@ -85,7 +105,7 @@ index 985c8d6fc..702dd29c4 100644
  
          cur = ggml_add(ctx0, cur, ffn_inp);
          cb(cur, "l_out", il);
-@@ -162,7 +197,8 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
+@@ -162,7 +201,8 @@ llama_model_bitnet::graph::graph(const llama_model & model, const llm_graph_para
  
      // lm_head
      // FIXME: do not use model.tok_embd directly, duplicate as model.output

@@ -476,3 +476,25 @@ Verdict: tree attention works inside the engine and halves attention time at lon
 settings it is only 1.2× end to end on this 4k-context model; 1.5–1.8× needs everything on and +1.6–2.8% ppl.
 Next levers, in order: more bits per key (S=64 would let tau drop at equal quality, at 2× scan/table cost), an int8
 copy of K/V for the exact pass (half the random bytes), AVX-512 fast-scan (64 keys per shuffle).
+
+## Phase 9 — TEAL-style activation sparsity (training-free, magnitude pruning of matmul inputs) — **fails on BitNet**
+Engine op `op_teal` (`TREE_TEAL=a:o:f:d`): per token, zero the given fraction of smallest-|x| entries of the input to
+the q/k/v projections (a), the output projection (o), gate/up (f), down (d). This is the quality ceiling for TEAL
+(per-token exact top-k rather than calibrated thresholds). KL vs stock, 8 × 2048 WikiText-2 windows (floor ≈ 0.0026):
+
+| sparsity a:o:f:d | PPL ratio | mean KL | same top-1 |
+|---|---|---|---|
+| 0.25 : 0.25 : 0.25 : 0 | 1.000 | 0.022 | 92.6% |
+| 0.40 : 0.40 : 0.40 : 0 | 1.041 | 0.088 | 85.7% |
+| 0.50 : 0.50 : 0.50 : 0 | 1.124 | 0.192 | 79.6% |
+| 0.50 on q/k/v input only | 1.120 | 0.077 | 86.3% |
+| 0.50 on o input only | 0.989 | 0.038 | 91.2% |
+| 0.50 on gate/up input only | 1.050 | 0.123 | 83.3% |
+| 0.50 on down input only | 0.995 | 0.0039 | 96.9% |
+
+TEAL reports 40–50% at small loss on Llama/Mistral; here 25% already costs 8× the noise floor and 50% costs +12% ppl.
+Why: Llama's hidden states are heavy-tailed (a few big entries carry the vector), so dropping small entries is cheap.
+BitNet's attention/FFN inputs are near-Gaussian (the BitNet a4.8 paper says the same and quantizes them to 4 bits
+instead of sparsifying), so half the entries carry real energy. The only tolerant site is the down-projection input,
+which relu² already makes sparse and which the sparse exact MLP already exploits. Not worth a kernel (it would also
+need column-skipping over row-packed I2_S weights). Projections stay dense.
