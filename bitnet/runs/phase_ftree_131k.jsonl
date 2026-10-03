@@ -1,0 +1,17 @@
+{"phase": 15, "event": "captured", "train_tokens": 131072, "test_tokens": 4096, "s": 325}
+{"phase": 15, "router": "lowrank", "r": 256, "k": 1024, "rescore": 0, "rel_err": 0.13497, "recall": 0.8489, "router_macs": 2424832, "final_loss": 29.4538, "s": 755}
+{"phase": 15, "router": "lowrank", "r": 256, "k": 1024, "rescore": 1, "rel_err": 0.06161, "recall": 0.9304, "router_macs": 2424832, "final_loss": 29.4538, "s": 756}
+{"phase": 15, "router": "lowrank", "r": 256, "k": 1536, "rescore": 0, "rel_err": 0.08095, "recall": 0.9073, "router_macs": 2424832, "final_loss": 29.4538, "s": 756}
+{"phase": 15, "router": "lowrank", "r": 256, "k": 1536, "rescore": 1, "rel_err": 0.02452, "recall": 0.9714, "router_macs": 2424832, "final_loss": 29.4538, "s": 757}
+{"phase": 15, "router": "neuron_oracle", "k": 1024, "rel_err": 0.01105, "recall": 0.9875, "s": 758}
+{"phase": 15, "router": "neuron_oracle", "k": 1536, "rel_err": 0.00309, "recall": 0.9966, "s": 758}
+{"phase": 15, "router": "tree", "B": 6.75, "leaves": 1024, "depth": 10, "k": 1024, "neurons_used": 1031, "rescore": 0, "rel_err": 0.19762, "recall": 0.7815, "router_macs": 2618880, "router_macs_beam": 25600, "final_loss": 4.9153, "s": 1121}
+{"phase": 15, "router": "tree", "B": 6.75, "leaves": 1024, "depth": 10, "k": 1024, "neurons_used": 1024, "rescore": 1, "rel_err": 0.09764, "recall": 0.8888, "router_macs": 2618880, "router_macs_beam": 25600, "final_loss": 4.9153, "s": 1122}
+{"phase": 15, "router": "flat", "B": 6.75, "leaves": 1024, "depth": 10, "k": 1024, "neurons_used": 1031, "rescore": 0, "rel_err": 0.17642, "recall": 0.8029, "router_macs": 2621440, "router_macs_beam": null, "final_loss": 4.6704, "s": 1123}
+{"phase": 15, "router": "flat", "B": 6.75, "leaves": 1024, "depth": 10, "k": 1024, "neurons_used": 1024, "rescore": 1, "rel_err": 0.08599, "recall": 0.9016, "router_macs": 2621440, "router_macs_beam": null, "final_loss": 4.6704, "s": 1123}
+{"phase": 15, "router": "leaf_oracle", "B": 6.75, "leaves": 1024, "depth": 10, "k": 1024, "neurons_used": 1030, "rescore": 0, "rel_err": 0.09392, "recall": 0.8964, "router_macs": 0, "router_macs_beam": null, "final_loss": 0.0, "s": 1124}
+{"phase": 15, "router": "tree", "B": 6.75, "leaves": 1024, "depth": 10, "k": 1536, "neurons_used": 1546, "rescore": 0, "rel_err": 0.13409, "recall": 0.8484, "router_macs": 2618880, "router_macs_beam": 25600, "final_loss": 4.9153, "s": 1124}
+{"phase": 15, "router": "tree", "B": 6.75, "leaves": 1024, "depth": 10, "k": 1536, "neurons_used": 1536, "rescore": 1, "rel_err": 0.04825, "recall": 0.9436, "router_macs": 2618880, "router_macs_beam": 25600, "final_loss": 4.9153, "s": 1125}
+{"phase": 15, "router": "flat", "B": 6.75, "leaves": 1024, "depth": 10, "k": 1536, "neurons_used": 1546, "rescore": 0, "rel_err": 0.11772, "recall": 0.8658, "router_macs": 2621440, "router_macs_beam": null, "final_loss": 4.6704, "s": 1126}
+{"phase": 15, "router": "flat", "B": 6.75, "leaves": 1024, "depth": 10, "k": 1536, "neurons_used": 1536, "rescore": 1, "rel_err": 0.04114, "recall": 0.9519, "router_macs": 2621440, "router_macs_beam": null, "final_loss": 4.6704, "s": 1127}
+{"phase": 15, "router": "leaf_oracle", "B": 6.75, "leaves": 1024, "depth": 10, "k": 1536, "neurons_used": 1545, "rescore": 0, "rel_err": 0.05124, "recall": 0.942, "router_macs": 0, "router_macs_beam": null, "final_loss": 0.0, "s": 1127}

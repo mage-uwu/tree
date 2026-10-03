@@ -818,3 +818,38 @@ Even a free MLP caps this engine at ~2.8× (1 thread) / ~1.8–2× (4 threads): 
 attention, and per-op/thread overhead. A long distillation to k≈512 at near-base quality (TurboSparse/ProSparse report ~90%
 FFN sparsity after ≤150B tokens of continued training on 7B models) would give ~2.3× / 1.6× / 1.8×. 3× needs the
 projections addressed as well.
+
+## Phase 15 step 1 — FFF-style tree router over BitNet's own neurons, single layer (`phase_ftree.py`, `runs/phase_ftree_32k.jsonl`, `runs/phase_ftree_131k.jsonl`) — **gate narrowly fails, gap closing with data**
+Layer 15, CPU. Neurons grouped into 2^D leaves by balanced recursive bisection of co-activation profiles; soft binary tree
+(one hyperplane per node, leaf log-prob = sum of log-sigmoids on its path) trained on teacher leaf energy shares (listwise
+CE, Adam 1e-3 cosine). A token computes its top leaves' neurons (k), or with rescore 2k candidates → exact gate top k.
+Controls: Phase-13 low-rank selector (rank 256, per-neuron, same training), flat leaf router (one linear score per leaf),
+leaf oracle (true best leaves). MLP output relative error on 4k held-out wiki tokens (neuron oracle: 0.011 / 0.003).
+
+32k training tokens, 1500 steps:
+
+| router | k=1024 | k=1024 rescore | k=1536 | k=1536 rescore |
+|---|---|---|---|---|
+| low-rank (reference) | 0.121 | 0.056 | 0.071 | 0.022 |
+| tree D=6 (108/leaf) | 0.417 | 0.231 | 0.307 | 0.139 |
+| tree D=8 (27/leaf) | 0.309 | 0.170 | 0.225 | 0.096 |
+| tree D=9 (13.5/leaf) | 0.266 | 0.141 | 0.189 | 0.076 |
+| tree D=10 (6.75/leaf) | 0.220 | 0.112 | 0.152 | 0.058 |
+| flat D=10 | 0.188 | 0.094 | 0.127 | 0.047 |
+| leaf oracle D=10 | 0.093 | – | 0.051 | – |
+
+131k training tokens, 3000 steps (depth 11 run timed out on CPU):
+
+| router | k=1024 | k=1024 rescore | k=1536 | k=1536 rescore |
+|---|---|---|---|---|
+| low-rank (reference) | 0.135 | 0.062 | 0.081 | 0.025 |
+| tree D=10 | 0.198 (**1.46×**) | 0.098 (1.58×) | 0.134 (1.66×) | 0.048 (1.97×) |
+| flat D=10 | 0.176 (1.31×) | 0.086 (1.39×) | 0.118 (1.46×) | 0.041 (1.68×) |
+
+- **Granularity is not the blocker at ~7 neurons/leaf:** the leaf oracle (0.093 / 0.051) beats the low-rank selector without
+  rescore. The loss is in *routing*: tree 0.198 vs oracle 0.094.
+- **Trees are data-hungry, low-rank isn't:** 4× data moved the tree 0.220 → 0.198 (k=1024) while low-rank didn't improve.
+  Gate (≤1.5× low-rank) passes only at k=1024 without rescore; fails elsewhere (1.6–2.0×).
+- **The hierarchy costs ~10–15%** vs a flat leaf router with the same leaves; the flat router passes the gate at 3 of 4 points.
+- Cost per token: tree beam path D·d = 25.6k MACs (single path; several leaves need a beam) vs low-rank 2.4M, and leaves are
+  contiguous blocks of ~7 neurons (the read pattern the engine wants).
