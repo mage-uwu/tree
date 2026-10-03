@@ -1,0 +1,9 @@
+{"phase": 14, "event": "head energy concentration", "top_m_energy": {"4": 0.5575, "8": 0.7822, "10": 0.8522, "12": 0.9044, "16": 0.9709}}
+{"phase": 14, "heads_kept": 16, "of": 20, "kind": "oracle", "proj_weights_saved": 0.16, "ppl": 18.901, "kl": 0.044, "top1": 0.8826}
+{"phase": 14, "heads_kept": 16, "of": 20, "kind": "static", "proj_weights_saved": 0.16, "ppl": 21.164, "kl": 0.2163, "top1": 0.7568}
+{"phase": 14, "heads_kept": 12, "of": 20, "kind": "oracle", "proj_weights_saved": 0.32, "ppl": 20.89, "kl": 0.2131, "top1": 0.773}
+{"phase": 14, "heads_kept": 12, "of": 20, "kind": "static", "proj_weights_saved": 0.32, "ppl": 39.916, "kl": 0.8319, "top1": 0.5675}
+{"phase": 14, "heads_kept": 10, "of": 20, "kind": "oracle", "proj_weights_saved": 0.4, "ppl": 23.845, "kl": 0.3861, "top1": 0.7099}
+{"phase": 14, "heads_kept": 10, "of": 20, "kind": "static", "proj_weights_saved": 0.4, "ppl": 65.517, "kl": 1.3532, "top1": 0.4418}
+{"phase": 14, "heads_kept": 8, "of": 20, "kind": "oracle", "proj_weights_saved": 0.48, "ppl": 34.861, "kl": 0.7792, "top1": 0.6037}
+{"phase": 14, "heads_kept": 8, "of": 20, "kind": "static", "proj_weights_saved": 0.48, "ppl": 144.61, "kl": 2.141, "top1": 0.3381}

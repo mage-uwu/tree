@@ -777,3 +777,24 @@ e.g. selector training continued jointly during healing, or more rank. GPU spend
 At long context the trained selector doesn't beat the lossless sparse MLP. Best overall: HF MLP codes + sparse MLP + head +
 tree attention tau 4 + int8 K/V = ~1.7× decode at 7.5k context with ppl slightly below stock. Short context, 1 thread:
 ~1.96× (selector or sparse MLP + head; attention trees don't pay below ~1–2k keys).
+
+## Phase 14 — can we go well past 2×? (`phase_heads.py`, `runs/phase_heads.jsonl`) — **no, not with these levers**
+**Projections: per-token head skipping fails.** Skipping a query head would save its q rows + o columns (13.1M of the 16.4M
+projection weights/layer are q+o). Oracle: per token keep the m of 20 heads with the largest output contribution
+‖W_o[:,h] x_h‖, all 30 layers (4 wiki windows × 512, CPU). Energy share in the top 8 / 12 / 16 heads: 78% / 90% / 97%.
+
+| heads kept | projection weights saved | oracle KL / top-1 | static per-layer subset KL |
+|---|---|---|---|
+| 16 / 20 | 16% | 0.044 / 88% | 0.216 |
+| 12 / 20 | 32% | 0.213 / 77% | 0.832 |
+| 10 / 20 | 40% | 0.386 / 71% | 1.353 |
+| 8 / 20 | 48% | 0.779 / 60% | 2.141 |
+Even a *perfect* head selector costs more KL for 16% of the projections than the whole Phase-13 MLP cut. Heads are not
+per-token sparse the way MLP neurons are; the q/k/v/o projections stay dense (4.1 MB/layer) and are the floor.
+
+**MLP: what a perfect no-rescore selector would buy** (short prompt, 1 thread, 256 tokens, ms/token):
+stock 160.6 · head only 118.9 · head + exact sparse MLP 96.3 (10.38 tok/s) · head + 13d rescore 96.2 (10.39) ·
+head + 13c no rescore **85.5 (11.69 tok/s, 1.88×)**. A selector with 13c's reads and 13d's quality is worth ~13% over the
+exact sparse MLP, i.e. ~1.9× at short context; ~1.7× at 7.5k context (attention-bound) is unchanged.
+**Ceiling.** Removing the MLP *entirely* would leave ~39 ms/token (≈4×), but every MLP cut that removes rows needs data at
+pretraining scale (Phases 12/12b). Within post-hoc + short healing, ~2× decode is the practical ceiling on this CPU.

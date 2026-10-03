@@ -34,7 +34,9 @@ The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the
   (healing can't fix a frozen selector's misses). Memory-bound: rescore reads about as many rows as the exact sparse MLP.
 - **The released GGUF differs from the HF weights** (~2% of HF MLP nonzeros are 0): HF MLP codes in the GGUF give ppl
   11.28 → 10.93 (−3.1%) for free (`patch_gguf_mlp.py --hf_codes 1`). Healed-model KL is measured against that base.
-- Next: better selector so C can shrink toward k (train it jointly during healing / higher rank).
+- Phase 14: per-token attention-head skipping fails even as an oracle (keep 16/20 heads: KL 0.044 for 16% of q/k/v/o), so
+  projections are a dense floor. A perfect no-rescore MLP selector would add only ~13% over the exact sparse MLP (short
+  ctx). Practical ceiling of this approach ≈ 2× decode. Best measured: ~1.96× short ctx 1 thread, 1.69× at 7.5k ctx 4 threads.
 - Next (other): AVX-512 fast-scan and int8 leaves; per-layer tau; sparse-MLP memory layout.
 
 # Tree-BitNet handoff
