@@ -626,3 +626,23 @@ windows (base ppl 12.75 / 5.11).
   6M tokens of local healing cannot substitute. Cheaper targets that stay within reach: heal a *partial* cut
   (e.g. routed subsets with m≈2048, or only the easiest layers), measured against the lossless exact-gate sparse
   MLP (1.9× fewer MACs) that it would have to beat.
+
+### Phase 12b — healing smaller cuts (`runs/phase_heal2.jsonl`; 3000 steps = 12.3M tokens per arm, A100 80GB)
+Same recipe as Phase 12. The bar: the exact-gate sparse MLP already gives 1.9× fewer MLP MACs at the noise floor,
+and the whole everything-on stack sits at KL 0.023.
+
+| arm | MLP MACs vs dense | step 0 wiki ppl / KL | 2M tok | 4M | 8M | **12.3M tokens: wiki ppl / KL / top-1** | chat ppl / KL |
+|---|---|---|---|---|---|---|---|
+| D: K=1, m=2048 | 3.4× fewer | 67.0 / 1.97 | 23.1 | 21.4 | 20.4 | **20.2 / 0.603 / 66%** | 12.4 / 1.09 |
+| E: K=4 routed, m=2048 | 3.4× | 27.3 / 0.97 | 18.6 | 17.8 | 17.2 | **17.1 / 0.419 / 71%** | 9.5 / 0.79 |
+| F: K=1, m=3072 | 2.25× | 26.2 / 0.95 | 17.1 | 16.4 | 16.0 | **15.9 / 0.338 / 74%** | 8.6 / 0.70 |
+(base: wiki 12.75, chat 5.11)
+
+- All three plateau by ~6–8M tokens (the last 4M tokens move KL by ≤0.01). Even the mildest cut (2.25×, F) ends at
+  KL 0.34 / +25% wiki ppl — ~15× worse than the whole everything-on stack and far worse than the lossless 1.9×
+  sparse MLP it would have to replace. **No healed cut beats what we already have.**
+- Neuron-space routing again pays at equal compute: E (4 × 2048) beats D (one 2048-neuron MLP) clearly (KL 0.42
+  vs 0.60) and gets close to F, which spends 1.5× the MACs.
+- Why healing stalls: a static neuron set per cluster cannot follow the token-specific neurons (oracle per-token
+  top-2048 is at rel err 0.003, static top-2048 at 0.45); the healed students compensate only partly, and the
+  remaining gap behaves like missing capacity rather than undertraining. Closing it is a pretraining-scale job.

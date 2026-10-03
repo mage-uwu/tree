@@ -19,7 +19,9 @@ The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the
   distillation helps modestly, but it is ~10× short of a 30-layer budget.
 - Healing (Phase 12): all MLPs replaced by teacher-bootstrapped students + end-to-end KL training, 6M tokens/arm:
   6.8× fewer MLP MACs heals ppl 2506 → 42 (base 12.7), then plateaus (KL 1.37). Neuron-space routing beats a narrow
-  MLP 2× at equal compute, but radical MLP cuts need pretraining-scale data. MLP-to-tree is closed at this budget.
+  MLP 2× at equal compute, but radical MLP cuts need pretraining-scale data. Smaller healed cuts (Phase 12b, 12M
+  tokens) plateau too: 3.4× → KL 0.42 (routed) / 0.60, 2.25× → KL 0.34 — none beats the lossless 1.9× sparse MLP.
+  MLP-to-tree / MLP-cutting is closed at this budget.
 - Next: AVX-512 fast-scan and int8 leaves (would make 64 trees pay); per-layer tau; sparse-MLP memory layout.
 
 # Tree-BitNet handoff
