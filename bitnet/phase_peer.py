@@ -39,6 +39,7 @@ ap.add_argument("--stageB_layers", type=int, default=0)          # 0 = all layer
 ap.add_argument("--heal_steps", type=int, default=1500)
 ap.add_argument("--heal_lr", type=float, default=1e-4)
 ap.add_argument("--heal_ternary", type=int, default=0)            # keep healed neuron weights ternary (STE, fixed step)
+ap.add_argument("--save", default="")                              # path: selectors + healed neurons (int8 ternary codes)
 ap.add_argument("--T", type=int, default=1024)
 ap.add_argument("--B", type=int, default=4)
 ap.add_argument("--eval_wiki", type=int, default=8)
@@ -326,4 +327,18 @@ for step in range(1, a.heal_steps + 1):
     if step % a.eval_every == 0 or step == a.heal_steps:
         log(a.out, kl_rec({"phase": 13, "stage": "heal", "k": k, "ternary": a.heal_ternary, "step": step, "train_kl": R(run / nb), "tokens_seen": step * a.B * a.T, "elapsed_s": R(time.time() - t0, 1)}))
         run = 0.0; nb = 0
+if a.save:
+    with torch.no_grad():
+        ck = {"k": k, "kc": KC(k), "ternary": a.heal_ternary, "layers": {}}
+        for L, mmod in mods.items():
+            ent = {"A": mmod.sel.A.detach().to(torch.bfloat16).cpu(), "B": mmod.sel.B.detach().to(torch.bfloat16).cpu(),
+                   "snw": mmod.snw.detach().float().cpu(), "c": mmod.c}
+            for name, w, st in (("gate", mmod.Wg, mmod.steps[0]), ("up", mmod.Wu, mmod.steps[1]), ("down", mmod.Wd, mmod.steps[2])):
+                if a.heal_ternary:
+                    ent[name] = (w / st).round().clamp(-1, 1).to(torch.int8).cpu(); ent[name + "_scale"] = st
+                else:
+                    ent[name] = w.detach().to(torch.bfloat16).cpu()
+            ck["layers"][L] = ent
+        torch.save(ck, a.save)
+    log(a.out, {"event": "saved", "path": a.save})
 log(a.out, {"event": "done", "total_s": R(time.time() - t0, 1)})
