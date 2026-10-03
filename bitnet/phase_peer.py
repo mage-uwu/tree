@@ -38,6 +38,7 @@ ap.add_argument("--stageB_rescore", type=int, default=1)
 ap.add_argument("--stageB_layers", type=int, default=0)          # 0 = all layers (smoke tests: first N only)
 ap.add_argument("--heal_steps", type=int, default=1500)
 ap.add_argument("--heal_lr", type=float, default=1e-4)
+ap.add_argument("--heal_ternary", type=int, default=0)            # keep healed neuron weights ternary (STE, fixed step)
 ap.add_argument("--T", type=int, default=1024)
 ap.add_argument("--B", type=int, default=4)
 ap.add_argument("--eval_wiki", type=int, default=8)
@@ -195,11 +196,17 @@ def assess(sel, Ut, W, k, c, kc=0):
     return rec / len(Ut), num / den
 
 
+def ternarize(w, step):
+    """ternary {-step,0,+step} with a straight-through gradient; step fixed at the teacher's scale, so step 0 is exact."""
+    return w + ((w / step).round().clamp(-1, 1) * step - w).detach()
+
+
 class SelMLP(torch.nn.Module):
     """exact BitNet neurons, top-k chosen by the selector; optionally trainable neuron weights (healing)."""
-    def __init__(self, sel, W, k, c, train_neurons=False, kc=0):
+    def __init__(self, sel, W, k, c, train_neurons=False, kc=0, ternary=False):
         super().__init__()
-        self.sel, self.k, self.c, self.kc = sel, k, c, kc
+        self.sel, self.k, self.c, self.kc, self.ternary = sel, k, c, kc, ternary
+        self.steps = [W[0].abs().max().item(), W[1].abs().max().item(), W[2].abs().max().item()]
         Wg, Wu, Wd, snw = W
         mk = torch.nn.Parameter if train_neurons else (lambda t: t)
         self.Wg, self.Wu, self.Wd, self.snw = mk(Wg.clone()), mk(Wu.clone()), mk(Wd.clone()), mk(snw.clone())
@@ -208,10 +215,13 @@ class SelMLP(torch.nn.Module):
 
     def forward(self, u):
         sh = u.shape; x = u.reshape(-1, d)
+        Wg, Wu, Wd = self.Wg, self.Wu, self.Wd
+        if self.ternary:
+            Wg, Wu, Wd = ternarize(Wg, self.steps[0]), ternarize(Wu, self.steps[1]), ternarize(Wd, self.steps[2])
         with torch.no_grad():
-            idx = choose(self.sel, x, (self.Wg.detach(), None, None, None), self.k, self.kc)
+            idx = choose(self.sel, x, (Wg.detach(), None, None, None), self.k, self.kc)
         m = torch.zeros(len(x), Fn, device=x.device).scatter_(-1, idx, 1.0)
-        return sel_output(x, m, (self.Wg, self.Wu, self.Wd, self.snw), self.c).reshape(sh).to(u.dtype)
+        return sel_output(x, m, (Wg, Wu, Wd, self.snw), self.c).reshape(sh).to(u.dtype)
 
 
 def kl_rec(rec):
@@ -291,14 +301,14 @@ for k in [int(x) for x in a.stageB_ks.split(",")]:
 
 # healing: selected neurons' weights trained end to end (selectors frozen)
 k = a.heal_k
-mods = {L: SelMLP(sels[L][0], teacher_weights(L), k, sels[L][1][k], train_neurons=True, kc=KC(k)) for L in LB}
+mods = {L: SelMLP(sels[L][0], teacher_weights(L), k, sels[L][1][k], train_neurons=True, kc=KC(k), ternary=bool(a.heal_ternary)) for L in LB}
 install(mods); STATE.enabled = True
 params = [p for mmod in mods.values() for p in (mmod.Wg, mmod.Wu, mmod.Wd, mmod.snw)]
 train = torch.cat([windows(tok, wiki_tr, a.T), windows(tok, chat_tr, a.T)])
 train = train[torch.randperm(len(train), generator=torch.Generator().manual_seed(1))]
 opt = torch.optim.Adam(params, lr=a.heal_lr)
 mm = sels[0][0].macs() + (KC(k) * d + 2 * k * d if KC(k) else 3 * k * d)
-log(a.out, kl_rec({"phase": 13, "stage": "heal", "k": k, "step": 0, "mlp_fewer_macs": R(dense_macs / mm, 2)}))
+log(a.out, kl_rec({"phase": 13, "stage": "heal", "k": k, "ternary": a.heal_ternary, "step": 0, "mlp_fewer_macs": R(dense_macs / mm, 2)}))
 run = 0.0; nb = 0
 for step in range(1, a.heal_steps + 1):
     for g in opt.param_groups: g["lr"] = a.heal_lr * min(1.0, step / 50) * 0.5 * (1 + math.cos(math.pi * step / a.heal_steps))
@@ -314,6 +324,6 @@ for step in range(1, a.heal_steps + 1):
     opt.zero_grad(set_to_none=True); loss.backward(); torch.nn.utils.clip_grad_norm_(params, 1.0); opt.step()
     run += loss.item(); nb += 1; del lt, ls, loss
     if step % a.eval_every == 0 or step == a.heal_steps:
-        log(a.out, kl_rec({"phase": 13, "stage": "heal", "k": k, "step": step, "train_kl": R(run / nb), "tokens_seen": step * a.B * a.T, "elapsed_s": R(time.time() - t0, 1)}))
+        log(a.out, kl_rec({"phase": 13, "stage": "heal", "k": k, "ternary": a.heal_ternary, "step": step, "train_kl": R(run / nb), "tokens_seen": step * a.B * a.T, "elapsed_s": R(time.time() - t0, 1)}))
         run = 0.0; nb = 0
 log(a.out, {"event": "done", "total_s": R(time.time() - t0, 1)})
