@@ -1,0 +1,44 @@
+{"phase": 13, "event": "data", "calib_tokens": 196608, "held_tokens": 16384, "t": "15:13:34"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 0, "coverage": {"1536": 0.7526, "2048": 0.8132}, "s": 14.6, "t": "15:13:49"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 1, "coverage": {"1536": 0.9582, "2048": 0.9764}, "s": 6.3, "t": "15:13:55"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 2, "coverage": {"1536": 0.9495, "2048": 0.9639}, "s": 6.6, "t": "15:14:01"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 3, "coverage": {"1536": 0.9046, "2048": 0.9406}, "s": 6.9, "t": "15:14:08"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 4, "coverage": {"1536": 0.879, "2048": 0.9203}, "s": 7.2, "t": "15:14:16"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 5, "coverage": {"1536": 0.8154, "2048": 0.8803}, "s": 7.4, "t": "15:14:23"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 6, "coverage": {"1536": 0.8382, "2048": 0.8991}, "s": 7.7, "t": "15:14:31"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 7, "coverage": {"1536": 0.9088, "2048": 0.953}, "s": 7.9, "t": "15:14:38"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 8, "coverage": {"1536": 0.8941, "2048": 0.9429}, "s": 8.2, "t": "15:14:47"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 9, "coverage": {"1536": 0.8504, "2048": 0.915}, "s": 8.4, "t": "15:14:55"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 10, "coverage": {"1536": 0.8894, "2048": 0.9391}, "s": 8.7, "t": "15:15:04"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 11, "coverage": {"1536": 0.8475, "2048": 0.9049}, "s": 8.9, "t": "15:15:13"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 12, "coverage": {"1536": 0.8707, "2048": 0.9229}, "s": 9.2, "t": "15:15:22"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 13, "coverage": {"1536": 0.8665, "2048": 0.9206}, "s": 9.5, "t": "15:15:31"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 14, "coverage": {"1536": 0.8706, "2048": 0.9226}, "s": 9.7, "t": "15:15:41"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 15, "coverage": {"1536": 0.8958, "2048": 0.9367}, "s": 10.0, "t": "15:15:51"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 16, "coverage": {"1536": 0.916, "2048": 0.9513}, "s": 10.3, "t": "15:16:01"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 17, "coverage": {"1536": 0.9328, "2048": 0.9638}, "s": 10.6, "t": "15:16:12"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 18, "coverage": {"1536": 0.9452, "2048": 0.9711}, "s": 10.8, "t": "15:16:23"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 19, "coverage": {"1536": 0.9609, "2048": 0.981}, "s": 11.1, "t": "15:16:34"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 20, "coverage": {"1536": 0.9405, "2048": 0.9679}, "s": 11.4, "t": "15:16:45"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 21, "coverage": {"1536": 0.9729, "2048": 0.9862}, "s": 11.6, "t": "15:16:57"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 22, "coverage": {"1536": 0.9584, "2048": 0.9781}, "s": 11.9, "t": "15:17:09"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 23, "coverage": {"1536": 0.9706, "2048": 0.9855}, "s": 12.1, "t": "15:17:21"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 24, "coverage": {"1536": 0.9692, "2048": 0.9845}, "s": 12.4, "t": "15:17:33"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 25, "coverage": {"1536": 0.9628, "2048": 0.9817}, "s": 12.7, "t": "15:17:46"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 26, "coverage": {"1536": 0.9585, "2048": 0.9796}, "s": 12.9, "t": "15:17:59"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 27, "coverage": {"1536": 0.9582, "2048": 0.9788}, "s": 13.2, "t": "15:18:12"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 28, "coverage": {"1536": 0.9331, "2048": 0.9626}, "s": 13.5, "t": "15:18:26"}
+{"phase": 13, "stage": "B", "event": "selector", "layer": 29, "coverage": {"1536": 0.7667, "2048": 0.8316}, "s": 13.8, "t": "15:18:39"}
+{"event": "saved selectors", "path": "/root/out/peer_k1536.sel.pt", "t": "15:18:40"}
+{"phase": 13, "event": "base", "data": "wiki", "ppl": 12.7472, "t": "15:18:41"}
+{"phase": 13, "event": "base", "data": "chat", "ppl": 5.1124, "t": "15:18:41"}
+{"phase": 13, "stage": "B", "event": "all layers, no healing", "k": 1536, "mlp_fewer_macs": 3.73, "wiki_ppl": 13.6293, "wiki_kl": 0.16351, "wiki_top1": 0.7984, "chat_ppl": 5.6121, "chat_kl": 0.12887, "chat_top1": 0.8609, "t": "15:18:45"}
+{"phase": 13, "stage": "B", "event": "all layers, no healing", "k": 2048, "mlp_fewer_macs": 2.92, "wiki_ppl": 13.0603, "wiki_kl": 0.08501, "wiki_top1": 0.8509, "chat_ppl": 5.3519, "chat_kl": 0.07577, "chat_top1": 0.8925, "t": "15:18:50"}
+{"phase": 13, "stage": "heal", "k": 1536, "ternary": 1, "step": 0, "mlp_fewer_macs": 3.73, "wiki_ppl": 13.6293, "wiki_kl": 0.16351, "wiki_top1": 0.7984, "chat_ppl": 5.6121, "chat_kl": 0.12887, "chat_top1": 0.8609, "t": "15:19:58"}
+{"phase": 13, "stage": "heal", "k": 1536, "ternary": 1, "step": 500, "train_kl": 0.10708, "tokens_seen": 2048000, "elapsed_s": 1123.1, "wiki_ppl": 13.6455, "wiki_kl": 0.11316, "wiki_top1": 0.8325, "chat_ppl": 5.3649, "chat_kl": 0.08725, "chat_top1": 0.8774, "t": "15:28:38"}
+{"phase": 13, "stage": "heal", "k": 1536, "ternary": 1, "step": 1000, "train_kl": 0.0902, "tokens_seen": 4096000, "elapsed_s": 1641.8, "wiki_ppl": 13.5274, "wiki_kl": 0.1042, "wiki_top1": 0.8401, "chat_ppl": 5.3161, "chat_kl": 0.07942, "chat_top1": 0.8824, "t": "15:37:16"}
+{"phase": 13, "stage": "heal", "k": 1536, "ternary": 1, "step": 1500, "train_kl": 0.0848, "tokens_seen": 6144000, "elapsed_s": 2161.0, "wiki_ppl": 13.5203, "wiki_kl": 0.1012, "wiki_top1": 0.8421, "chat_ppl": 5.2925, "chat_kl": 0.07605, "chat_top1": 0.8821, "t": "15:45:56"}
+{"phase": 13, "stage": "heal", "k": 1536, "ternary": 1, "step": 2000, "train_kl": 0.08209, "tokens_seen": 8192000, "elapsed_s": 2679.8, "wiki_ppl": 13.4975, "wiki_kl": 0.10018, "wiki_top1": 0.8436, "chat_ppl": 5.2909, "chat_kl": 0.075, "chat_top1": 0.8828, "t": "15:54:34"}
+{"phase": 13, "stage": "heal", "k": 1536, "ternary": 1, "step": 2500, "train_kl": 0.08188, "tokens_seen": 10240000, "elapsed_s": 3198.4, "wiki_ppl": 13.498, "wiki_kl": 0.09985, "wiki_top1": 0.8409, "chat_ppl": 5.2826, "chat_kl": 0.07469, "chat_top1": 0.8819, "t": "16:03:13"}
+{"event": "saved", "path": "/root/out/peer_k1536", "t": "16:03:14"}
+{"event": "done", "total_s": 3203.6, "t": "16:03:14"}

@@ -84,9 +84,13 @@ with open(a.out, "r+b") as f:
         probe = lambda lin, n: torch.cat([lin(torch.eye(n, dtype=torch.bfloat16)[i:i + 512]).float() for i in range(0, n, 512)])
         with torch.no_grad():
             for L, layer in enumerate(model.model.layers):
-                for name, lin, n_in in (("gate", layer.mlp.gate_proj, d), ("up", layer.mlp.up_proj, d), ("down", layer.mlp.down_proj, Fn)):
+                sites = [("ffn_gate", layer.mlp.gate_proj, d), ("ffn_up", layer.mlp.up_proj, d), ("ffn_down", layer.mlp.down_proj, Fn)]
+                if a.hf_codes == 2:                                    # 2: attention projections too
+                    at = layer.self_attn
+                    sites += [("attn_q", at.q_proj, d), ("attn_k", at.k_proj, d), ("attn_v", at.v_proj, d), ("attn_output", at.o_proj, d)]
+                for name, lin, n_in in sites:
                     W = probe(lin, n_in).T.numpy(); st = np.abs(W).max()
-                    o, _ = off[f"blk.{L}.ffn_{name}.weight"]
+                    o, _ = off[f"blk.{L}.{name}.weight"]
                     f.seek(o); f.write(pack_i2s(np.round(W / st).astype(np.int8))); f.write(np.float32(st).tobytes())
                 print("layer", L, flush=True)
     else:
