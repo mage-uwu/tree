@@ -798,3 +798,23 @@ head + 13c no rescore **85.5 (11.69 tok/s, 1.88×)**. A selector with 13c's read
 exact sparse MLP, i.e. ~1.9× at short context; ~1.7× at 7.5k context (attention-bound) is unchanged.
 **Ceiling.** Removing the MLP *entirely* would leave ~39 ms/token (≈4×), but every MLP cut that removes rows needs data at
 pretraining scale (Phases 12/12b). Within post-hoc + short healing, ~2× decode is the practical ceiling on this CPU.
+
+### Phase 14b — speed if the MLP were cut harder (`engine/kcurve.sh`; timing only, selector path with k neurons/token, no rescore)
+Decode tok/s, head on (long: + tree attention tau 4 + int8 K/V); speedup vs stock in brackets. k=16 ≈ "MLP is free"
+apart from the 1.5 MB/layer selector.
+
+| MLP | short, 1 thread | short, 4 threads | 7.5k ctx, 4 threads |
+|---|---|---|---|
+| stock | 6.14 | 20.91 | 11.55 |
+| exact sparse MLP (lossless) | 10.69 (1.74×) | 24.46 (1.17×) | 17.46 (1.51×) |
+| k=1536 (6912/1536 = 4.5× fewer neurons) | 11.91 (1.94×) | 27.94 (1.34×) | 19.10 (1.65×) |
+| k=1024 | 13.29 (2.16×) | 29.61 (1.42×) | 19.79 (1.71×) |
+| k=768 | 13.75 (2.24×) | 31.00 (1.48×) | 19.63 (1.70×) |
+| k=512 (~93% sparsity) | 14.20 (2.31×) | 33.86 (1.62×) | 20.30 (1.76×) |
+| k=256 | 15.34 (2.50×) | 33.21 (1.59×) | 22.34 (1.93×) |
+| k=16 (MLP ≈ free) | 16.97 (2.76×) | 36.73 (1.76×) | 22.99 (1.99×) |
+
+Even a free MLP caps this engine at ~2.8× (1 thread) / ~1.8–2× (4 threads): the rest is q/k/v/o projections, the selector,
+attention, and per-op/thread overhead. A long distillation to k≈512 at near-base quality (TurboSparse/ProSparse report ~90%
+FFN sparsity after ≤150B tokens of continued training on 7B models) would give ~2.3× / 1.6× / 1.8×. 3× needs the
+projections addressed as well.
