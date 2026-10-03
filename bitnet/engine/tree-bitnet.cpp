@@ -142,6 +142,8 @@ static float quant_i8(const float * x, int8_t * q, int n, int * sum) {
 }
 
 // ------------------------------------------------------------------ sparse exact MLP
+// prefetch distance (rows) for gathered neuron rows; TREE_MLP_PF, default 8
+static const int MPF = getenv("TREE_MLP_PF") ? atoi(getenv("TREE_MLP_PF")) : 8;
 struct MlpLayer {
     ggml_tensor * gate = nullptr, * up = nullptr, * down = nullptr;
     int il = 0;
@@ -323,7 +325,7 @@ static void op_gcand(ggml_tensor * dst, int ith, int nth, void * ud) {
         int a, b; part(F, ith, nth, a, b);
         for (int i = a; i < b; i++) {
             if ((int)((gt[i] - mn) * bs) > thr) {
-                if (i + 8 < b) _mm_prefetch((const char *)(Wg + (size_t)(i + 8) * d / 4), _MM_HINT_T0);
+                if (i + MPF < b) { const char * pn = (const char *)(Wg + (size_t)(i + MPF) * d / 4); for (int q = 0; q < d / 4; q += 64) _mm_prefetch(pn + q, _MM_HINT_T0); }
                 o[i] = (float)(dot_codes(Wg + (size_t)i * d / 4, xq.data(), d) - sx) / as * gscale;
             } else o[i] = 0.f;
         }
@@ -350,7 +352,7 @@ static void op_hsel(ggml_tensor * dst, int ith, int nth, void * ud) {
         int s1 = (int)(std::lower_bound(idx.begin(), idx.begin() + n, b) - idx.begin());
         for (int s = s0; s < s1; s++) {
             int i = idx[s];
-            if (s + 4 < s1) { const char * pn = (const char *)(Wu + (size_t)idx[s + 4] * d / 4); for (int q = 0; q < d / 4; q += 64) _mm_prefetch(pn + q, _MM_HINT_T0); }
+            if (s + MPF < s1) { const char * pn = (const char *)(Wu + (size_t)idx[s + MPF] * d / 4); for (int q = 0; q < d / 4; q += 64) _mm_prefetch(pn + q, _MM_HINT_T0); }
             float u = (float)(dot_codes(Wu + (size_t)i * d / 4, xq.data(), d) - sx) / as * wscale;
             ht[i] = gt[i] * gt[i] * u;
         }
@@ -381,7 +383,7 @@ static void op_down_part(ggml_tensor * dst, int ith, int nth, void * ud) {
                 std::fill(acc.begin(), acc.end(), 0);
                 for (int s = k0; s < k1; s++) {
                     const uint8_t * w = L.downT.data() + (size_t)nz[s] * d / 4;
-                    if (s + 4 < k1) { const char * pn = (const char *)(L.downT.data() + (size_t)nz[s + 4] * d / 4); for (int c = 0; c < d / 4; c += 64) _mm_prefetch(pn + c, _MM_HINT_T0); }
+                    if (s + MPF < k1) { const char * pn = (const char *)(L.downT.data() + (size_t)nz[s + MPF] * d / 4); for (int c = 0; c < d / 4; c += 64) _mm_prefetch(pn + c, _MM_HINT_T0); }
                     __m256i av = _mm256_set1_epi8(a[s]);
                     for (int blk = 0; blk < d / 128; blk++) {
                         __m256i bb = _mm256_loadu_si256((const __m256i *)(w + blk * 32));

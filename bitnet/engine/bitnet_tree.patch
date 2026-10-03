@@ -1,3 +1,58 @@
+diff --git a/ggml/src/ggml-cpu/llamafile/sgemm.cpp b/ggml/src/ggml-cpu/llamafile/sgemm.cpp
+index 0329aaca1..6524d8d02 100644
+--- a/ggml/src/ggml-cpu/llamafile/sgemm.cpp
++++ b/ggml/src/ggml-cpu/llamafile/sgemm.cpp
+@@ -1354,6 +1354,10 @@ class tinyBLAS_Q0_ARM {
+ // Uses same register-tiling approach as tinyBLAS_Q0_AVX
+ 
+ #if defined(__AVX2__)
++static inline int i2s_pf() {
++    static const int d = [] { const char * e = getenv("I2S_PF"); return e ? atoi(e) : 8192; }();
++    return d;
++}
+ class tinyBLAS_I2S_AVX {
+   public:
+     tinyBLAS_I2S_AVX(int64_t k,
+@@ -1429,7 +1433,12 @@ class tinyBLAS_I2S_AVX {
+                     acc[r][c] = _mm256_setzero_si256();
+ 
+             // Walk through k in blocks of 128 elements
++            // tree-bitnet: software prefetch I2S_PF bytes ahead of this tile's weights (the tile's RM rows are one
++            // contiguous region of RM*k/4 bytes, consumed RM*32 bytes per block). Decode streams weights from DRAM
++            // and the hardware prefetcher alone reaches ~43% of bandwidth on this kernel shape.
++            const char * pf_base = (const char *)A + ii * a_row_bytes + i2s_pf();
+             for (int64_t bl = 0; bl < nb; bl++) {
++                if (i2s_pf() > 0) for (int o = 0; o < RM * 32; o += 64) _mm_prefetch(pf_base + bl * RM * 32 + o, _MM_HINT_T0);
+                 // Load and unpack RM rows of A (32 bytes each → 4×32 uint8)
+                 __m256i a_vals[RM][4];
+                 for (int r = 0; r < RM; r++) {
+diff --git a/ggml/src/ggml-cpu/quants.c b/ggml/src/ggml-cpu/quants.c
+index 603f51c54..092c5da01 100644
+--- a/ggml/src/ggml-cpu/quants.c
++++ b/ggml/src/ggml-cpu/quants.c
+@@ -1387,6 +1387,12 @@ size_t quantize_i2_s(const float * src, void * dst, int64_t nrow, int64_t n_per_
+ }
+ 
+ 
++static int i2s_pf_dist(void) {
++    static int d = -1;
++    if (d < 0) { const char * e = getenv("I2S_PF"); d = e ? atoi(e) : 8192; }
++    return d;
++}
++
+ static void ggml_vec_dot_i2_i8_s_1x1(int n, float * s, size_t bs, const void * vx, size_t bx, const void * vy, size_t by, int nrc) {
+ #if defined(__AVX2__)
+     const uint8_t *    x = (uint8_t *)vx;
+@@ -1406,6 +1412,9 @@ static void ggml_vec_dot_i2_i8_s_1x1(int n, float * s, size_t bs, const void * v
+         
+         // 计算当前行的x指针偏移
+         const uint8_t * x_row = x + row * bx / 4;
++        // tree-bitnet: software prefetch of the weights I2S_PF bytes ahead (rows are contiguous per thread). Decode is a
++        // weight stream; without it this kernel reaches ~43% of DRAM bandwidth, with 8 KB ahead ~95%.
++        if (i2s_pf_dist() > 0) for (int o = 0; o < n / 4; o += 64) _mm_prefetch((const char *)x_row + i2s_pf_dist() + o, _MM_HINT_T0);
+         
+         for (int i = 0; i < group32_num; i++) {
+             const uint8_t *px = x_row + i * 1024;     // 32 * 32
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
 index 6448a8427..68de692eb 100644
 --- a/src/CMakeLists.txt

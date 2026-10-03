@@ -853,3 +853,33 @@ leaf oracle (true best leaves). MLP output relative error on 4k held-out wiki to
 - **The hierarchy costs ~10–15%** vs a flat leaf router with the same leaves; the flat router passes the gate at 3 of 4 points.
 - Cost per token: tree beam path D·d = 25.6k MACs (single path; several leaves need a beam) vs low-rank 2.4M, and leaves are
   contiguous blocks of ~7 neurons (the read pattern the engine wants).
+
+## Phase 16 — the kernel floor: software prefetch in bitnet.cpp's ternary GEMV (`engine/avx512bench.c`, `bitnet_tree.patch`) — **1.5× on stock, lossless**
+Question: can AVX-512 / AMX break the ~2× floor? This box (Xeon, 4 vCPUs) has AVX-512 VNNI and AMX.
+**Microbenchmark** (537 MB of I2_S weights, rows of 2560, swept like one decode step):
+
+| threads | pure read | AVX2 kernel | AVX-512 VNNI kernel | AVX2 + software prefetch 8 KB ahead |
+|---|---|---|---|---|
+| 1 | 14.1 GB/s | 5.9 | 5.9 | **12.8** |
+| 4 | 52.9 GB/s | 22.9 | 21.2 | **51.8** |
+In cache (4 MB) VNNI is 1.18× faster, from DRAM it's no faster: the kernel is **latency-bound at ~43% of DRAM bandwidth**,
+not compute-bound. Wider SIMD doesn't help; keeping more misses in flight does. AMX needs ≥16 activation rows, so it can
+only help prefill/batched serving, not single-user decode (not pursued).
+
+**In the engine.** Decode goes through llamafile's `tinyBLAS_I2S_AVX` (`ggml-cpu/llamafile/sgemm.cpp`, 4-row tiles, already
+VNNI under -march=native), not `ggml_vec_dot_i2_i8_s` (patched too, unused in decode). Added: prefetch `I2S_PF` bytes
+(default 8192) ahead of each tile's contiguous weight region, two lines per 128-weight block. Output byte-identical.
+
+| decode tok/s (256 tokens) | I2S_PF=0 (stock) | I2S_PF=8192 |
+|---|---|---|
+| stock, short prompt, 1 thread | 6.39–6.43 | **9.54–9.88 (1.5×)** |
+| stock, short prompt, 4 threads | 20.96–21.47 | **30.75–33.05 (1.5×)** |
+| stock, 7.5k ctx, 4 threads | 11.57 | 14.46 |
+| head + sparse MLP (HF codes), short, 1 thread | 10.94 | **15.92 (2.49× vs stock)** |
+| head + sparse MLP, short, 4 threads | 24.39 | 31.9–32.5 (≈ prefetched stock) |
+| head + sparse MLP + tree attn tau 4 + int8 KV, 7.5k ctx, 4 threads | 18.59 | **21.61 (1.87× vs stock)** |
+
+- 1 thread: the tree stack and the prefetch multiply: **2.49×** over stock, past the old "~2× ceiling".
+- 4 threads, short context: prefetched stock is at ~31 ms/token, but streaming its weights at 52 GB/s takes ~10 ms. The rest
+  is per-op/thread-sync overhead + attention + output layer, so the tree ops (more, smaller ops) no longer gain there.
+  Next floor: op fusion / fewer barriers per layer. Gathered-row prefetch distance in our own ops (`TREE_MLP_PF`) is flat 4–32.

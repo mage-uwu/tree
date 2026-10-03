@@ -37,6 +37,12 @@ The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the
 - Phase 14: per-token attention-head skipping fails even as an oracle (keep 16/20 heads: KL 0.044 for 16% of q/k/v/o), so
   projections are a dense floor. A perfect no-rescore MLP selector would add only ~13% over the exact sparse MLP (short
   ctx). Practical ceiling of this approach ≈ 2× decode. Best measured: ~1.96× short ctx 1 thread, 1.69× at 7.5k ctx 4 threads.
+- **Phase 16: the floor was memory latency, not math.** bitnet.cpp's ternary GEMV (llamafile `tinyBLAS_I2S_AVX`) ran at ~43%
+  of DRAM bandwidth; AVX-512 VNNI doesn't help, software prefetch 8 KB ahead (`I2S_PF`, in `bitnet_tree.patch`) does:
+  stock decode 1.5× faster, byte-identical output. With the tree stack: **2.49× at 1 thread**, 1.87× at 7.5k ctx 4 threads.
+  At 4 threads short ctx the floor is now per-op/thread-sync overhead (~2/3 of the 31 ms/token). Next: op fusion.
+- Phase 15 step 1: FFF tree router over BitNet neurons (single layer) is 1.46–2.0× the low-rank selector's error;
+  leaf granularity at ~7 neurons is fine (oracle beats low-rank), routing is the gap, trees improve with data.
 - Next (other): AVX-512 fast-scan and int8 leaves; per-layer tau; sparse-MLP memory layout.
 
 # Tree-BitNet handoff
