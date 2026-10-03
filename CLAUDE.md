@@ -27,7 +27,14 @@ The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the
   2k candidates whose exact gate picks the top k (select+rescore). All 30 layers, k=1536 (2.9× fewer MLP MACs), ternary
   healing 12M tokens: wiki ppl +0.9% (KL 0.030), chat +0.5%. k=1024 (4.1×) float-healed: +2.1% (KL 0.056).
   PEER product keys lose to the low-rank selector at N=6912. `bitnet/phase_peer.py --save` exports selectors + ternary
-  neurons. Next: engine op (selector → gathered gate rows → up/down) and measured CPU speed.
+  neurons.
+- **Phase 13 in the engine (13c/13d):** `TREE_MLP_SEL=` (`export_selectors.py`) + healed weights patched into the GGUF
+  (`patch_gguf_mlp.py`, folds coverage √c into ffn_sub_norm). Rescore C=3072, k=1536: engine KL 0.038, decode everything-on
+  at 7.5k ctx 17.4 tok/s (1.57×, prev best 16.7); no rescore C=k: 1.96× at 1 thread short ctx with head, but KL 0.126
+  (healing can't fix a frozen selector's misses). Memory-bound: rescore reads about as many rows as the exact sparse MLP.
+- **The released GGUF differs from the HF weights** (~2% of HF MLP nonzeros are 0): HF MLP codes in the GGUF give ppl
+  11.28 → 10.93 (−3.1%) for free (`patch_gguf_mlp.py --hf_codes 1`). Healed-model KL is measured against that base.
+- Next: better selector so C can shrink toward k (train it jointly during healing / higher rank).
 - Next (other): AVX-512 fast-scan and int8 leaves; per-layer tau; sparse-MLP memory layout.
 
 # Tree-BitNet handoff

@@ -4,7 +4,7 @@ Per layer: ffn_gate / ffn_up / ffn_down ternary codes + per-tensor scale (from a
 elsewhere) while training used the coverage-corrected RMS sum/(F c), so sqrt(c) folds the difference into the weight.
 --sel <.sel.pt> --k K: only the sub-norm fold (trained selectors on the original weights).
 --hf_codes 1: write the HF model's own MLP codes (the GGUF's differ: ~2% of HF nonzeros are 0 there), the
-control for healed weights, which start from the HF codes.
+control for healed weights, which start from the HF codes. --hf_codes 2: attention projections too.
 --verify L: decode the GGUF's layer-L gate/up/down and compare to the HF model's (checks the packing; no writing).
 I2_S: per 128 weights 32 bytes, byte j holds weights j, 32+j, 64+j, 96+j at bits 6,4,2,0; code = value+1; the tensor's
 codes are followed by its float scale (tensor bytes = n/4 + 32). gate/up rows are the F neurons (d long), down rows d."""

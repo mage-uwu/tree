@@ -715,3 +715,54 @@ baseline on MACs at a comparable quality cost. Not yet measured: CPU speed. The 
 selector (2.4M MACs, int8-able) → gather the gate rows of 2k candidates (contiguous I2_S rows) → up rows + transposed
 down rows for the top k — gathered rows are what made the earlier sparse paths bandwidth-bound, so the real speedup
 must be measured.
+
+### Phase 13c/13d — trained selectors and healed ternary weights in bitnet.cpp (`runs/phase_peer3.jsonl`, `phase_peer4.jsonl`)
+Engine path (`TREE_MLP_SEL=<sel.bin>`, `TREE_MLP_K=k`, `TREE_MLP_SELC=C`): int8 Aᵀ · x (r=256) → int4 B → C candidates
+by score → exact gate on those C rows → top-k by exact gate → up rows + transposed down rows. C = k means no rescore.
+Selectors: `export_selectors.py --ckpt <.sel.pt>`. Healed weights: `patch_gguf_mlp.py --ckpt` writes the ternary codes
+(I2_S repack + per-tensor scale) into a GGUF copy and folds the coverage correction into `ffn_sub_norm` (× √c: the engine
+normalises the k selected neurons over all F, training used sum/(F·c)).
+
+**Side finding: the released GGUF is not the HF model.** Decoding I2_S and comparing to the HF BitLinear weights:
+~2% of the HF MLP nonzeros are 0 in the GGUF (gate/up/down), and q/k differ by ~1% in both directions. Writing the HF
+MLP codes into the GGUF (`patch_gguf_mlp.py --hf_codes 1`): **ppl 11.28 → 10.93 (−3.1%)**, KL 0.052 vs stock (8×2048 wiki).
+HF codes for attention too (`--hf_codes 2`): 11.07, so only the MLP part helps. Healed models start from the HF codes, so
+their engine KL below is against an HF-codes base (`klbase_hf.bin`, ppl 10.91); stock GGUF is 11.28 on the same text.
+
+**Quality** (PyTorch harness: 8 wiki + 4 chat windows, base 12.75 / 5.11; engine: 8×2048 wiki, KL vs HF-codes base):
+
+| run | MLP MACs vs dense | PyTorch wiki ppl / KL, chat KL | engine KL / ppl |
+|---|---|---|---|
+| 13c no rescore (C=k=1536), unhealed | 3.7× fewer | 13.63 / 0.164, 0.129 | 0.181 / 10.97 |
+| 13c no rescore, healed 10M tokens | 3.7× | 13.50 / **0.100**, 0.075 (plateau from 4M tokens) | 0.126 / 10.91 |
+| 13d rescore (C=3072), unhealed | 2.9× | 12.87 / 0.050, 0.044 | – |
+| 13d rescore, healed 10M tokens | 2.9× | **12.87 / 0.031, 0.023** | **0.038 / 10.81** (C=2048: 0.080) |
+
+Without rescore, healing can't repair the selector's misses (the selector is frozen, only the neurons heal): KL stalls at
+0.10. Rescore is what makes quality.
+
+**CPU decode speed** (this machine: 4 cores, AVX2; 256 generated tokens; tok/s; "attn" = tree attention tau 5 + int8 K/V):
+
+| config | short prompt, 1 thread | short, 4 threads | 7.5k prompt, 4 threads |
+|---|---|---|---|
+| stock (fa off) | 6.2–6.5 | 20.0–20.6 | 10.8–11.1 |
+| previous best: head + exact sparse MLP + attn (stock weights) | 9.8–10.3 | 21.3–23.2 | 15.5–16.7 |
+| 13c (no rescore) selector MLP | 8.50 | 22.2 | 11.0 |
+| 13c selector MLP + head | **12.19 (1.96×)** | **27.3 (1.35×)** | 11.6 |
+| 13c selector MLP + head + attn | 11.33 | 26.0 | **17.52 (1.61×)** |
+| 13d (rescore) selector MLP | 7.64 | 20.3 | 10.5 |
+| 13d selector MLP + head | 11.01 (1.72×) | 23.7 (1.15×) | 11.5 |
+| 13d selector MLP + head + attn | 10.28 | 22.6 | **17.41 (1.57×)** |
+
+- Decode is memory-bound: rescore reads C=3072 gate rows + 1536 up + 1536 down rows, about the same bytes as the exact
+  sparse MLP (~1900 active neurons, all three matrices), so 13d is only ~4% faster than the previous best at 7.5k and
+  barely faster at 4 threads. The no-rescore path (4608 rows) is the fast one (+15–25% over the previous best) but costs KL 0.126.
+- Short context: tree attention costs a little (it only pays past ~1–2k keys). At long context, attention dominates and
+  the MLP choice moves the total by only a few %.
+- Unexplained: with flash attention off at 7.5k context, the selector MLP alone is no faster than dense (10.5–11.0 vs
+  11.0), while at short context it is. Not investigated further; the recommended long-context config uses tree attention.
+
+**Phase 13 engine verdict.** The method works end to end in C at KL 0.038 (better ppl than the stock GGUF, thanks to the
+HF codes), but on this 4-core box the rescore variant is only a few % faster than the lossless exact sparse MLP. The speed
+needs fewer gathered rows *and* good selection: a better selector (so C can shrink toward k without the 0.10 KL floor),
+e.g. selector training continued jointly during healing, or more rank. GPU spend for 13c+13d: ~$2.6.
