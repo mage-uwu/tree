@@ -15,6 +15,8 @@ t0 = time.time()
 model, tok = load_model(a.device)
 cfg = model.config; d, Fn, NL = cfg.hidden_size, cfg.intermediate_size, cfg.num_hidden_layers
 ck = torch.load(a.ckpt) if a.ckpt else None
+if ck is not None and "layers" not in ck:                         # phase_peer .sel.pt: {L: {"A": (d,r), "B": (r,F)}}
+    ck = {"layers": ck}
 r = a.r if ck is None else ck["layers"][0]["A"].shape[1]
 with open(a.out, "wb") as f:
     f.write(b"TSEL"); f.write(struct.pack("<5i", 1, NL, d, Fn, r))
