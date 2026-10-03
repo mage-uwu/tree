@@ -4,6 +4,8 @@
 //   TREE_MLP_K=1536      ... or a fixed top-k by relu(gate) (FRAC wins if both are set)
 //   TREE_MLP_PARTIAL=256:3072  candidates from an exact sum over the 256 largest-|x| input dims, exact gate for the
 //                        top 3072 only (measured: no decode speedup over the dense gate, +2.6% ppl; kept for reference)
+//   TREE_MLP_SEL=sel.bin low-rank neuron selectors (bitnet/export_selectors.py): rank-r int8/int4 scores, exact gate
+//                        for the top TREE_MLP_SELC candidates (=TREE_MLP_K: no rescore), top TREE_MLP_K computed
 //   TREE_HEAD=path.bin   tree output layer (file from bitnet/export_vocab_trees.py)
 //   TREE_HEAD_N=8192     exact candidates per token
 //   TREE_ATTN=path.bin   select+rescore attention (file from bitnet/export_key_trees.py)

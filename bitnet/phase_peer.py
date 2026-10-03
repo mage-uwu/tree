@@ -289,6 +289,9 @@ for L in LB:
     sels[L] = (sel, cs)
     log(a.out, {"phase": 13, "stage": "B", "event": "selector", "layer": L, "coverage": {str(k): R(v, 4) for k, v in cs.items()}, "s": R(time.time() - t1, 1)})
     del U
+if a.save:                                                        # selectors first (small; useful even if healing dies)
+    torch.save({L: {"A": sels[L][0].A.detach().cpu(), "B": sels[L][0].B.detach().cpu(), "cov": sels[L][1]} for L in LB}, a.save + ".sel.pt")
+    log(a.out, {"event": "saved selectors", "path": a.save + ".sel.pt"})
 STATE.enabled = False
 with torch.no_grad():
     for name, X in X_eval:
@@ -334,8 +337,10 @@ if a.save:
             ent = {"A": mmod.sel.A.detach().to(torch.bfloat16).cpu(), "B": mmod.sel.B.detach().to(torch.bfloat16).cpu(),
                    "snw": mmod.snw.detach().float().cpu(), "c": mmod.c}
             for name, w, st in (("gate", mmod.Wg, mmod.steps[0]), ("up", mmod.Wu, mmod.steps[1]), ("down", mmod.Wd, mmod.steps[2])):
-                if a.heal_ternary:
-                    ent[name] = (w / st).round().clamp(-1, 1).to(torch.int8).cpu(); ent[name + "_scale"] = st
+                if a.heal_ternary:                                     # 2-bit codes (value+1), 4 per byte along the last dim
+                    q = ((w / st).round().clamp(-1, 1) + 1).to(torch.uint8)
+                    ent[name] = (q[..., 0::4] | (q[..., 1::4] << 2) | (q[..., 2::4] << 4) | (q[..., 3::4] << 6)).cpu()
+                    ent[name + "_scale"] = st; ent[name + "_shape"] = tuple(w.shape)
                 else:
                     ent[name] = w.detach().to(torch.bfloat16).cpu()
             ck["layers"][L] = ent

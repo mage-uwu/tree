@@ -34,6 +34,8 @@ static void print_stats() {
 struct TreeCfg {
     float mlp_frac = 0; int mlp_k = 0; bool all = false;
     int part_m = 0, part_C = 0;
+    bool sel = false; int sL = 0, sd = 0, sF = 0, sr = 0;                       // TREE_MLP_SEL: low-rank neuron selectors
+    std::vector<int8_t> sA8; std::vector<float> sAs; std::vector<uint8_t> sB4; std::vector<float> sBs;
     bool attn = false; float tau = 8.f; int recent = 64;
     int aL = 0, aH = 0, aS = 0, aD = 0, ahd = 0;
     std::vector<float> aw, ab, ac;       // [L][H][S][2^D-1][hd], [L][H][S][2^D-1], [L][H][S][2^D][hd]
@@ -49,6 +51,23 @@ static TreeCfg & cfg() {
         if (const char * s = getenv("TREE_MLP_FRAC")) c.mlp_frac = (float)atof(s);
         if (const char * s = getenv("TREE_MLP_K"))    c.mlp_k = atoi(s);
         if (const char * s = getenv("TREE_MLP_PARTIAL")) { if (sscanf(s, "%d:%d", &c.part_m, &c.part_C) != 2) c.part_m = c.part_C = 0; }
+        if (const char * p = getenv("TREE_MLP_SEL")) {
+            FILE * f = fopen(p, "rb"); char magic[4]; int32_t h[5];
+            if (!f || fread(magic, 1, 4, f) != 4 || memcmp(magic, "TSEL", 4) || fread(h, 4, 5, f) != 5) { fprintf(stderr, "tree-bitnet: cannot read %s\n", p); exit(1); }
+            c.sL = h[1]; c.sd = h[2]; c.sF = h[3]; c.sr = h[4];
+            c.sA8.resize((size_t)c.sL * c.sr * c.sd); c.sAs.resize((size_t)c.sL * c.sr);
+            c.sB4.resize((size_t)c.sL * c.sF * c.sr / 2); c.sBs.resize((size_t)c.sL * c.sF);
+            for (int l = 0; l < c.sL; l++) {
+                bool ok = fread(c.sA8.data() + (size_t)l * c.sr * c.sd, 1, (size_t)c.sr * c.sd, f) == (size_t)c.sr * c.sd;
+                ok = ok && fread(c.sAs.data() + (size_t)l * c.sr, 4, c.sr, f) == (size_t)c.sr;
+                ok = ok && fread(c.sB4.data() + (size_t)l * c.sF * c.sr / 2, 1, (size_t)c.sF * c.sr / 2, f) == (size_t)c.sF * c.sr / 2;
+                ok = ok && fread(c.sBs.data() + (size_t)l * c.sF, 4, c.sF, f) == (size_t)c.sF;
+                if (!ok) { fprintf(stderr, "tree-bitnet: short read %s\n", p); exit(1); }
+            }
+            fclose(f); c.sel = true;
+            c.part_C = getenv("TREE_MLP_SELC") ? atoi(getenv("TREE_MLP_SELC")) : 3072;
+            fprintf(stderr, "tree-bitnet: low-rank neuron selectors L=%d r=%d, %d candidates\n", c.sL, c.sr, c.part_C);
+        }
         if (const char * s = getenv("TREE_ALL"))      c.all = atoi(s) != 0;
         if (const char * s = getenv("TREE_HEAD_N"))   c.head_N = atoi(s);
         if (const char * p = getenv("TREE_HEAD")) {
@@ -125,6 +144,7 @@ static float quant_i8(const float * x, int8_t * q, int n, int * sum) {
 // ------------------------------------------------------------------ sparse exact MLP
 struct MlpLayer {
     ggml_tensor * gate = nullptr, * up = nullptr, * down = nullptr;
+    int il = 0;
     std::vector<uint8_t> gateT;        // [d rows][F] in I2_S packing (transposed gate), built on first use
     float gate_scale = 0;
     std::once_flag gbuilt;
@@ -229,27 +249,82 @@ static void op_gapprox(ggml_tensor * dst, int ith, int nth, void * ud) {
     }
 }
 
+// low-rank selector, step 1: q[r, T] = A^T x (int8 A rows x int8 x).  args: x
+static inline int dot_i8(const int8_t * a, const int8_t * b, int n) {
+    const __m256i one = _mm256_set1_epi16(1); __m256i acc = _mm256_setzero_si256();
+    for (int i = 0; i < n; i += 32) {
+        __m256i va = _mm256_loadu_si256((const __m256i *)(a + i)), vb = _mm256_loadu_si256((const __m256i *)(b + i));
+        acc = _mm256_add_epi32(acc, _mm256_madd_epi16(_mm256_maddubs_epi16(_mm256_abs_epi8(vb), _mm256_sign_epi8(va, vb)), one));
+    }
+    return hsum_i32(acc);
+}
+static void op_lrq(ggml_tensor * dst, int ith, int nth, void * ud) {
+    const TreeCfg & c = cfg(); const MlpLayer & L = *(const MlpLayer *)ud;
+    const ggml_tensor * x = dst->src[0];
+    const int d = (int)x->ne[0], T = (int)x->ne[1], r = c.sr;
+    const int8_t * A = c.sA8.data() + (size_t)L.il * r * d; const float * sA = c.sAs.data() + (size_t)L.il * r;
+    std::vector<int8_t> xq(d);
+    int a, b; part(r, ith, nth, a, b);
+    for (int t = 0; t < T; t++) {
+        const float * xt = (const float *)((const char *)x->data + t * x->nb[1]);
+        float * o = (float *)((char *)dst->data + t * dst->nb[1]);
+        int sx; float as = quant_i8(xt, xq.data(), d, &sx);
+        for (int j = a; j < b; j++) o[j] = as > 0 ? (float)dot_i8(A + (size_t)j * d, xq.data(), d) * sA[j] / as : 0.f;
+    }
+}
+// step 2: ghat[F, T] = B q (int4 neuron keys, two per byte, value+8; int8 q).  args: q
+static void op_lrs(ggml_tensor * dst, int ith, int nth, void * ud) {
+    const TreeCfg & c = cfg(); const MlpLayer & L = *(const MlpLayer *)ud;
+    const ggml_tensor * q = dst->src[0];
+    const int r = c.sr, F = c.sF, T = (int)q->ne[1], P = r / 2;
+    const uint8_t * B = c.sB4.data() + (size_t)L.il * F * P; const float * sB = c.sBs.data() + (size_t)L.il * F;
+    std::vector<int8_t> qq(r), qe(P), qo(P);
+    const __m256i m4 = _mm256_set1_epi8(15), one = _mm256_set1_epi16(1);
+    int a, b; part(F, ith, nth, a, b);
+    for (int t = 0; t < T; t++) {
+        const float * qt = (const float *)((const char *)q->data + t * q->nb[1]);
+        float * o = (float *)((char *)dst->data + t * dst->nb[1]);
+        int sq; float qs = quant_i8(qt, qq.data(), r, &sq);
+        for (int j = 0; j < P; j++) { qe[j] = qq[2 * j]; qo[j] = qq[2 * j + 1]; }
+        const float inv = qs > 0 ? 1.f / qs : 0.f;
+        for (int i = a; i < b; i++) {
+            const uint8_t * row = B + (size_t)i * P;
+            __m256i acc = _mm256_setzero_si256();
+            for (int j = 0; j < P; j += 32) {
+                __m256i bb = _mm256_loadu_si256((const __m256i *)(row + j));
+                __m256i lo = _mm256_and_si256(bb, m4), hi = _mm256_and_si256(_mm256_srli_epi16(bb, 4), m4);
+                __m256i s16 = _mm256_add_epi16(_mm256_maddubs_epi16(lo, _mm256_loadu_si256((const __m256i *)(qe.data() + j))),
+                                               _mm256_maddubs_epi16(hi, _mm256_loadu_si256((const __m256i *)(qo.data() + j))));
+                acc = _mm256_add_epi32(acc, _mm256_madd_epi16(s16, one));
+            }
+            o[i] = (float)(hsum_i32(acc) - 8 * sq) * sB[i] * inv;
+        }
+    }
+}
+
 // g[F, T]: exact gate for the top-C neurons by ghat, 0 elsewhere (relu -> not selected).  args: ghat, x
 static void op_gcand(ggml_tensor * dst, int ith, int nth, void * ud) {
     MlpLayer & L = *(MlpLayer *)ud;
     const ggml_tensor * gh = dst->src[0], * x = dst->src[1];
     const int F = (int)gh->ne[0], d = (int)x->ne[0], T = (int)x->ne[1], Cn = cfg().part_C;
     const uint8_t * Wg = (const uint8_t *)L.gate->data;
+    const float gscale = *(const float *)(Wg + (size_t)d * F / 4);       // I2_S per-tensor scale after the codes
     std::vector<int8_t> xq(d);
     for (int t = 0; t < T; t++) {
         const float * gt = (const float *)((const char *)gh->data + t * gh->nb[1]);
         const float * xt = (const float *)((const char *)x->data + t * x->nb[1]);
         float * o = (float *)((char *)dst->data + t * dst->nb[1]);
-        float mx = 1e-9f; for (int i = 0; i < F; i++) mx = std::max(mx, gt[i]);
-        const int NBIN = 2048; int hist[NBIN] = {0}; const float bs = (NBIN - 1) / mx;
-        for (int i = 0; i < F; i++) if (gt[i] > 0) hist[(int)(gt[i] * bs)]++;
+        // top-C by score regardless of sign (a low-rank score can be negative for a neuron whose exact gate is positive)
+        float mn = gt[0], mx = gt[0]; for (int i = 1; i < F; i++) { mn = std::min(mn, gt[i]); mx = std::max(mx, gt[i]); }
+        const int NBIN = 2048; int hist[NBIN] = {0}; const float bs = (NBIN - 1) / std::max(mx - mn, 1e-9f);
+        for (int i = 0; i < F; i++) hist[(int)((gt[i] - mn) * bs)]++;
         int thr = NBIN - 1, cnt = 0; while (thr > 0 && cnt + hist[thr] <= Cn) cnt += hist[thr--];
         int sx; float as = quant_i8(xt, xq.data(), d, &sx);
         int a, b; part(F, ith, nth, a, b);
         for (int i = a; i < b; i++) {
-            if (gt[i] > 0 && (int)(gt[i] * bs) > thr) {
+            if ((int)((gt[i] - mn) * bs) > thr) {
                 if (i + 8 < b) _mm_prefetch((const char *)(Wg + (size_t)(i + 8) * d / 4), _MM_HINT_T0);
-                o[i] = (float)(dot_codes(Wg + (size_t)i * d / 4, xq.data(), d) - sx) / as * L.gate_scale;
+                o[i] = (float)(dot_codes(Wg + (size_t)i * d / 4, xq.data(), d) - sx) / as * gscale;
             } else o[i] = 0.f;
         }
     }
@@ -347,9 +422,16 @@ ggml_tensor * tree_bitnet_ffn(ggml_context * ctx, ggml_tensor * x, ggml_tensor *
     if (gate->type != GGML_TYPE_I2_S || up->type != GGML_TYPE_I2_S || down->type != GGML_TYPE_I2_S) return nullptr;
     MlpLayer & L = g_mlp[il];
     L.up = up; L.down = down;
-    L.gate = gate;
+    L.gate = gate; L.il = il;
     ggml_tensor * g;
-    if (c.part_m > 0 && c.part_C > 0) {                                              // outlier partial-sum candidates
+    if (c.sel) {                                                                     // low-rank selector candidates
+        ggml_tensor * a0[1] = {x};
+        ggml_tensor * q = ggml_custom_4d(ctx, GGML_TYPE_F32, c.sr, x->ne[1], 1, 1, a0, 1, op_lrq, GGML_N_TASKS_MAX, &L);
+        ggml_tensor * aq[1] = {q};
+        ggml_tensor * gh = ggml_custom_4d(ctx, GGML_TYPE_F32, gate->ne[1], x->ne[1], 1, 1, aq, 1, op_lrs, GGML_N_TASKS_MAX, &L);
+        ggml_tensor * a1[2] = {gh, x};
+        g = ggml_custom_4d(ctx, GGML_TYPE_F32, gate->ne[1], x->ne[1], 1, 1, a1, 2, op_gcand, GGML_N_TASKS_MAX, &L);
+    } else if (c.part_m > 0 && c.part_C > 0) {                                              // outlier partial-sum candidates
         ggml_tensor * a0[1] = {x};
         ggml_tensor * gh = ggml_custom_4d(ctx, GGML_TYPE_F32, gate->ne[1], x->ne[1], 1, 1, a0, 1, op_gapprox, GGML_N_TASKS_MAX, &L);
         ggml_tensor * a1[2] = {gh, x};
