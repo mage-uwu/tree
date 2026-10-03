@@ -766,3 +766,14 @@ Without rescore, healing can't repair the selector's misses (the selector is fro
 HF codes), but on this 4-core box the rescore variant is only a few % faster than the lossless exact sparse MLP. The speed
 needs fewer gathered rows *and* good selection: a better selector (so C can shrink toward k without the 0.10 KL floor),
 e.g. selector training continued jointly during healing, or more rank. GPU spend for 13c+13d: ~$2.6.
+
+### Best combination, measured (7.5k-token prompt, 4 threads, tau 4, int8 K/V, head; 256 decoded tokens)
+| MLP | tok/s (stock 10.98 / 11.36) | quality (8×2048 wiki, vs stock) |
+|---|---|---|
+| exact sparse MLP (0.99 energy), stock weights | **18.91 (1.69×)** | ppl 11.56 (+2.5%), KL 0.031 |
+| exact sparse MLP, HF MLP codes (`hfcodes.gguf`) | same weights cost | **ppl 11.20 (−0.7%)**, KL 0.078 (different model) |
+| 13c selector, no rescore (healed) | 18.37 | KL 0.126 vs HF base |
+| 13d selector, rescore C=3072 (healed) | 17.76 | KL 0.038 vs HF base |
+At long context the trained selector doesn't beat the lossless sparse MLP. Best overall: HF MLP codes + sparse MLP + head +
+tree attention tau 4 + int8 K/V = ~1.7× decode at 7.5k context with ppl slightly below stock. Short context, 1 thread:
+~1.96× (selector or sparse MLP + head; attention trees don't pay below ~1–2k keys).
