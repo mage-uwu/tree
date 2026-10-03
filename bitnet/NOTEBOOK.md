@@ -646,3 +646,49 @@ and the whole everything-on stack sits at KL 0.023.
 - Why healing stalls: a static neuron set per cluster cannot follow the token-specific neurons (oracle per-token
   top-2048 is at rel err 0.003, static top-2048 at 0.45); the healed students compensate only partly, and the
   remaining gap behaves like missing capacity rather than undertraining. Closing it is a pretraining-scale job.
+
+## Phase 13 — teacher-supervised neuron selection, select-then-rescore, healing (`phase_peer.py`, `runs/phase_peer.jsonl`) — **works**
+The trick: keep *what is computed* exact (BitNet's own neurons) and learn only *which* neurons to compute. Every
+token gives exact labels for all 6912 neurons (teacher energy e_i = (|hn_i|·|down_i|)², from the exact gate), so the
+selector is trained by dense supervision (listwise CE to e/Σe), not through the end-to-end loss. Then the
+attention trick: the selector proposes kc = 2k candidates, their exact gate is computed (kc·d MACs), and the top-k by
+gate value are computed in full. Per-token MLP MACs: selector + kc·d + 2·k·d (dense 3·6912·d).
+
+Selectors, all initialised from the SVD of the layer's own gate matrix:
+`svd` (rank-256, untrained), `lr` (same, trained 1500 steps, ~6 s/layer), `peer` (product keys: rank-512 query,
+neurons on an 84×83 grid by product quantisation of their SVD embedding, keys trained).
+
+**Single layers** (output rel err on 16k held-out tokens; oracle = per-token top-k from the full gate):
+
+| layer | k | oracle | svd | lr | peer | svd+rescore | **lr+rescore** | peer+rescore | MLP MACs vs dense (lr+rescore) |
+|---|---|---|---|---|---|---|---|---|---|
+| 15 | 512 | 0.047 | 0.256 | – | 0.569 | 0.166 | 0.149 | 0.420 | 6.9× fewer |
+| 15 | 1024 | 0.012 | 0.133 | 0.122 | 0.418 | 0.064 | **0.057** | 0.244 | 4.1× |
+| 15 | 2048 | 0.003 | 0.048 | 0.044 | 0.243 | 0.010 | **0.008** | 0.087 | 2.3× |
+| 2 | 1024 | – | 0.053 | – | 0.479 | 0.047 | – | 0.332 | 4.1× |
+| 25 | 1024 | – | 0.077 | – | – | 0.025 | – | – | 4.1× |
+(Phase 11's best static neuron-space clusters at k=1024: 0.377.)
+
+Single-layer KL, layer 15, lr+rescore k=1024: **wiki 0.0039 / chat 0.0039** (Phase 11 best: 0.0117 / 0.0198).
+- **Per-token selection is the whole game**: even the untrained rank-256 SVD of the gate (2.4M MACs) beats every
+  static scheme by 3–6×. Supervised training adds a little; rescoring the candidates' exact gate adds a lot.
+- PEER product keys lose clearly here: with only ~83 codes per half, product quantisation of 6912 gate rows is too
+  coarse even after training. (PEER shines when experts number in the millions; an MLP has 6912 neurons.)
+
+**All 30 layers** (lr+rescore, no healing; 8 wiki + 4 chat windows, base 12.75 / 5.11):
+
+| k | MLP MACs vs dense | wiki ppl / KL / top-1 | chat ppl / KL |
+|---|---|---|---|
+| 1024 | 4.1× fewer | 13.45 / 0.124 / 82% | 5.54 / 0.112 |
+| 1536 | 2.9× fewer | **12.85 (+0.8%) / 0.050 / 89%** | 5.24 / 0.044 |
+
+**Healing** k=1024, selected neurons' weights trained end to end (float, Adam 1e-4, 6.1M tokens):
+
+| step (tokens) | 0 | 250 (1M) | 500 (2M) | 1000 (4M) | 1500 (6.1M) |
+|---|---|---|---|---|---|
+| wiki ppl / KL | 13.45 / 0.124 | 13.32 / 0.069 | 13.19 / 0.061 | 13.01 / 0.056 | **13.01 (+2.1%) / 0.056** |
+| chat ppl / KL | 5.54 / 0.112 | 5.20 / 0.054 | 5.19 / 0.046 | 5.17 / 0.041 | **5.17 (+1.0%) / 0.041** |
+
+Compare Phase 12b (static subsets, healed 12M tokens): 3.4× fewer MACs at KL 0.42. Phase 13 reaches 4.1× at KL 0.056
+after 6M tokens — a ~7× lower KL at a larger cut. Healed weights here are float; ternary healing (engine-deployable)
+is Phase 13b.
