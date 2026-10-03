@@ -22,7 +22,13 @@ The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the
   MLP 2× at equal compute, but radical MLP cuts need pretraining-scale data. Smaller healed cuts (Phase 12b, 12M
   tokens) plateau too: 3.4× → KL 0.42 (routed) / 0.60, 2.25× → KL 0.34 — none beats the lossless 1.9× sparse MLP.
   MLP-to-tree / MLP-cutting is closed at this budget.
-- Next: AVX-512 fast-scan and int8 leaves (would make 64 trees pay); per-layer tau; sparse-MLP memory layout.
+- **Phase 13 (works): teacher-supervised neuron selection.** Keep BitNet's neurons exact; a rank-256 selector
+  initialised from the SVD of each layer's gate is trained on the teacher's per-neuron energies (dense labels), proposes
+  2k candidates whose exact gate picks the top k (select+rescore). All 30 layers, k=1536 (2.9× fewer MLP MACs), ternary
+  healing 12M tokens: wiki ppl +0.9% (KL 0.030), chat +0.5%. k=1024 (4.1×) float-healed: +2.1% (KL 0.056).
+  PEER product keys lose to the low-rank selector at N=6912. `bitnet/phase_peer.py --save` exports selectors + ternary
+  neurons. Next: engine op (selector → gathered gate rows → up/down) and measured CPU speed.
+- Next (other): AVX-512 fast-scan and int8 leaves; per-layer tau; sparse-MLP memory layout.
 
 # Tree-BitNet handoff
 

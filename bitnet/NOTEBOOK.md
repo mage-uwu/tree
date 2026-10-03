@@ -692,3 +692,26 @@ Single-layer KL, layer 15, lr+rescore k=1024: **wiki 0.0039 / chat 0.0039** (Pha
 Compare Phase 12b (static subsets, healed 12M tokens): 3.4× fewer MACs at KL 0.42. Phase 13 reaches 4.1× at KL 0.056
 after 6M tokens — a ~7× lower KL at a larger cut. Healed weights here are float; ternary healing (engine-deployable)
 is Phase 13b.
+
+### Phase 13b — ternary-constrained healing (engine-deployable weights)
+Same as Phase 13 stage B (lr+rescore selectors in all 30 layers), healing with the neuron weights kept ternary
+(straight-through, step fixed at the teacher's scale, so step 0 reproduces the untrained result exactly), Adam 3e-4.
+k = 1536 candidates-rescored neurons (2.9× fewer MLP MACs), 12.3M tokens:
+
+| step (tokens) | 0 | 500 (2M) | 1000 (4M) | 1500 (6.1M) | 2000 (8.2M) | 2500 (10M) | 3000 (12.3M) |
+|---|---|---|---|---|---|---|---|
+| wiki ppl / KL | 12.87 / 0.050 | 12.93 / 0.035 | 12.89 / 0.032 | 12.85 / 0.031 | 12.84 / 0.031 | 12.88 / 0.030 | **12.86 (+0.9%) / 0.030** |
+| chat ppl / KL | 5.24 / 0.044 | 5.17 / 0.027 | 5.16 / 0.024 | 5.14 / 0.023 | 5.14 / 0.023 | 5.15 / 0.022 | **5.14 (+0.5%) / 0.022** |
+
+(base 12.75 / 5.11.) Top-1 agreement 91% wiki / 94% chat. The k=1024 ternary run was lost when the pod was
+terminated externally (pod vanished from the account mid-run, most likely the RunPod balance), and the run's
+jsonl was not retrieved; the numbers above are from the live log. `phase_peer.py --save` now writes selectors +
+ternary codes for the engine.
+
+**Phase 13 verdict.** Teacher-supervised per-token selection + exact rescoring + short ternary healing gives a
+BitNet MLP with 2.9× fewer MACs at +0.9% wiki ppl (KL 0.03), or 4.1× at +2.1% (float healing, KL 0.056) — versus
+1.9× for the exact-gate sparse MLP. It is the first MLP-cutting method in this project that beats the lossless
+baseline on MACs at a comparable quality cost. Not yet measured: CPU speed. The engine path would be: rank-256
+selector (2.4M MACs, int8-able) → gather the gate rows of 2k candidates (contiguous I2_S rows) → up rows + transposed
+down rows for the top k — gathered rows are what made the earlier sparse paths bandwidth-bound, so the real speedup
+must be measured.
