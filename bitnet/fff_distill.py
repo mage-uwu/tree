@@ -26,6 +26,7 @@ ap.add_argument("--anneal_frac", type=float, default=0.3)
 ap.add_argument("--B_leaf", type=int, default=8)                 # neurons per leaf (divides 6912)
 ap.add_argument("--router", default="flat", choices=["flat", "tree"])
 ap.add_argument("--router_rank", type=int, default=256)
+ap.add_argument("--router_init", default="svd", choices=["svd", "zero"])  # flat router: SVD of the gate, summed per leaf
 ap.add_argument("--layers", default="")                          # "" = all
 ap.add_argument("--tokens", type=float, default=100e6)
 ap.add_argument("--steps", type=int, default=0)                  # overrides --tokens
@@ -38,8 +39,8 @@ ap.add_argument("--aux", type=float, default=0.05)               # weight of rou
 ap.add_argument("--warmup", type=int, default=50)
 ap.add_argument("--data", default="fineweb", choices=["fineweb", "wiki"])
 ap.add_argument("--chat_frac", type=float, default=0.1)
-ap.add_argument("--calib_tokens", type=int, default=32768)
-ap.add_argument("--router_warm_steps", type=int, default=600)
+ap.add_argument("--calib_tokens", type=int, default=65536)
+ap.add_argument("--router_warm_steps", type=int, default=1500)
 ap.add_argument("--eval_every", type=int, default=250)
 ap.add_argument("--eval_windows", type=int, default=16)
 ap.add_argument("--save_every", type=int, default=500)
@@ -185,6 +186,8 @@ class FFFMLP(nn.Module):
         self.snw = nn.Parameter(snw[perm].float().clone())
         self.router = router
         self.m = NLEAF; self.aux = None
+        self.register_buffer("cov", torch.ones(()))                  # running coverage of the selected neurons
+    training_cov = True
     def weights(self, dt):
         return (ternarize(self.wg, self.steps[0]).to(dt), ternarize(self.wu, self.steps[1]).to(dt), ternarize(self.wd, self.steps[2]).to(dt))
     def forward(self, x):
@@ -200,7 +203,12 @@ class FFFMLP(nn.Module):
             mask = torch.zeros_like(lp, dtype=h.dtype).scatter_(-1, top, 1.0).repeat_interleave(a.B_leaf, -1)
         self.aux = -(p * lp).sum(-1).mean()
         hs = (h * mask).float()
-        hn = (hs * torch.rsqrt(hs.pow(2).mean(-1, keepdim=True) + eps) * self.snw).to(x.dtype)  # RMS over all F (engine-identical)
+        if self.training_cov:                                    # running coverage c (Phase 13: RMS = sum/(F c)); k anneals
+            with torch.no_grad():
+                c = (hs.pow(2).sum(-1) / hf.pow(2).sum(-1).clamp_min(1e-12)).mean()
+                self.cov.mul_(0.95).add_(0.05 * c)
+        # RMS over all F (engine-identical) with the coverage folded in; at export snw * sqrt(cov) -> GGUF ffn_sub_norm
+        hn = (hs * torch.rsqrt(hs.pow(2).mean(-1, keepdim=True) / self.cov + eps) * self.snw).to(x.dtype)
         return F.linear(ActQuant.apply(hn), wd)
 
 
@@ -259,6 +267,14 @@ for L in LAYERS:
         leaves = split_leaves(P, torch.arange(Fn, device=P.device), NLEAF)
         perm = torch.cat(leaves)
     router = (FlatRouter(a.router_rank) if a.router == "flat" else TreeRouter()).to(dev)
+    if a.router == "flat" and a.router_init == "svd":                                  # g = x Wg^T ~ (x A) B, summed per leaf
+        with torch.no_grad():
+            Us, Ss, Vh = torch.linalg.svd(Wg.float().T, full_matrices=False)               # (d,F) = U S Vh
+            r = a.router_rank
+            router.A.copy_(Us[:, :r] * Ss[:r].sqrt())
+            router.B.copy_((Ss[:r, None].sqrt() * Vh[:r])[:, perm].reshape(r, NLEAF, a.B_leaf).sum(-1))
+            z = (U.float()[:4096] @ router.A) @ router.B                                # temperature: logit std ~2
+            router.B.mul_(2.0 / z.std().clamp_min(1e-6))
     fff = FFFMLP(Wg, Wu, Wd, snw, perm, router).to(dev)
     # router warm-up on teacher leaf energies (dense labels), then fold coverage of the initial k into the sub-norm
     Ep = E[:, perm].reshape(len(E), NLEAF, a.B_leaf).sum(-1); Pl = Ep / Ep.sum(-1, keepdim=True).clamp_min(1e-12)
@@ -276,7 +292,7 @@ for L in LAYERS:
         hp = h[:, perm]
         c = ((hp * msk).pow(2).sum(-1) / hp.pow(2).sum(-1).clamp_min(1e-12)).mean().item()
         rec = ((E[:, perm] * msk).sum(-1) / E.sum(-1).clamp_min(1e-12)).mean().item()
-        fff.snw.mul_(math.sqrt(c))                                                        # engine normalises over all F
+        fff.cov.fill_(c)                                                                  # engine: folded into ffn_sub_norm at export
     fff.m = m0
     model.model.layers[L].mlp = Switch(mlp, fff)
     mods[L] = fff
@@ -308,6 +324,7 @@ def kl_loss(lt, ls):
 
 @torch.no_grad()
 def evaluate(step, k):
+    FFFMLP.training_cov = False
     rec = {"phase": 17, "event": "eval", "step": step, "k": k, "tokens_seen": step * tok_per_step}
     for name, X in X_eval:
         nll = kls = top1 = n = 0.0
@@ -319,7 +336,7 @@ def evaluate(step, k):
             nll += -lps.gather(-1, y[..., None]).sum().item(); kls += (lpt.exp() * (lpt - lps)).sum().item()
             top1 += (lt.argmax(-1) == ls.argmax(-1)).sum().item(); n += y.numel()
         rec.update({f"{name}_ppl": round(math.exp(nll / n), 4), f"{name}_kl": round(kls / n, 5), f"{name}_top1": round(top1 / n, 4)})
-    Switch.STUDENT = False
+    Switch.STUDENT = False; FFFMLP.training_cov = True
     log(rec)
 
 
@@ -328,7 +345,7 @@ def save(step, k):
     if not a.save: return
     ck = {"k": k, "B_leaf": a.B_leaf, "router": a.router, "ternary": 1, "step": step, "layers": {}}
     for L, f in mods.items():
-        ent = {"snw": f.snw.detach().float().cpu(), "c": 1.0, "perm": f.perm.cpu(),
+        ent = {"snw": f.snw.detach().float().cpu(), "c": float(f.cov), "perm": f.perm.cpu(),
                "router_state": {n: t.detach().float().cpu() for n, t in f.router.state_dict().items()}}
         # patch_gguf_mlp.py format: gate/up as (d,F) "in x out", down as (F,d); 2-bit codes (value+1), 4/byte, last dim
         for name, w, st in (("gate", f.wg.T, f.steps[0]), ("up", f.wu.T, f.steps[1]), ("down", f.wd.T, f.steps[2])):
