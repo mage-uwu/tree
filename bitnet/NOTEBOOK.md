@@ -888,3 +888,32 @@ VNNI under -march=native), not `ggml_vec_dot_i2_i8_s` (patched too, unused in de
 9.78 (1.52×) · head + sparse MLP (HF codes), no prefetch 11.07 (1.72×) · same + prefetch **16.07 (2.50×)**. The two gains
 multiply (1.52 × 1.72 = 2.61 predicted). Tree stack over *prefetched* stock: 1.64×. Quality of that config (8×2048 wiki):
 ppl 11.05 vs stock 11.28 (−2.1%, from the HF codes); vs its own HF-codes base +1.2% ppl, KL 0.017, top-1 97.6%.
+
+## Phase 17 — FFF distillation, fast path (`fff_distill.py`, `runs/fff_probe1.jsonl`, `runs/fff_probe2_B{1,8}.jsonl`)
+Every MLP becomes an FFF layer over BitNet's own exact neurons: neurons permuted into contiguous leaves of `B_leaf`
+(co-activation bisection), a low-rank flat router (SVD-of-gate init summed per leaf, temperature-scaled, warmed 1500 steps on
+65k teacher tokens) picks the top k/B leaves; neurons heal ternary (STE, fixed step); the router trains **jointly** on the
+student's own exact leaf energies (listwise CE, weight 0.05/layer); k anneals 1536 → 1024 over 30% of steps; running
+coverage keeps the engine-identical sub-norm scale right while k moves (folded into ffn_sub_norm at export).
+Fast path: BitLinears quantized once (HF re-quantizes the bf16 masters every forward), dense masked MLP (no gathers),
+FineWeb-Edu + 10% UltraChat packed 1024-token sequences, checkpoints in the `patch_gguf_mlp.py` format (+ perm + router).
+**Throughput (A100 80GB): 4,560 tok/s** (mb 4 × 1024 × accum 4; 66–71 GB), 3,490 tok/s at mb 2 → 100M tokens ≈ 6–8 h ≈ $8.5–11.
+Bug found by probe 1: the sub-norm coverage was frozen at k_start, so annealing k mis-scaled every selected neuron (fixed).
+
+Eval: 16 wiki + 8 chat windows of 1024 tokens, KL to the teacher (same model, original MLPs).
+
+| arm | init energy recall @1536 (mean / min) | step 0 (k=1536) wiki / chat KL | step 125, 2M tok (k=1024) | step 250, 4.1M tok (k=1024) |
+|---|---|---|---|---|
+| **per-neuron** (B_leaf 1; Phase-13 selector without rescore, now jointly trained) | 0.972 | 0.112 / 0.184 | 0.178 / 0.159 | **0.169 / 0.145** (ppl 16.23 / 6.13) |
+| FFF 8-neuron leaves | 0.864 / 0.781 | 0.502 / 0.834 | 0.788 / 0.897 | (stopped) |
+| probe 1: FFF 8-neuron leaves, before fixes | 0.85–0.95 | 0.530 / 0.910 | 0.648 / 0.805 (step 100) | 0.633 / 0.728 (step 200) |
+
+- **8-neuron leaves fail on BitNet's existing neurons**: recall drops from 97% to 86% (worst layer 78%) and 30 layers compound
+  it to KL 0.5 before training; healing can't keep up as k anneals (train KL rises 0.71 → 0.92). Consistent with Phase 15's
+  block-granularity oracle. Contiguous-block FFF would need neurons *trained* to be block-structured (pretraining-scale).
+- **Per-neuron selection with joint training works and keeps improving**: k=1024 without rescore reaches wiki KL 0.169 /
+  chat 0.145 after 4.1M tokens, still falling (−5% / −9% over the last 2M tokens with LR decaying). For reference, 13c (k=1536,
+  frozen selector) plateaued at 0.100 after 10M; Phase-13 float healing at k=1024 *with* rescore reached 0.056.
+- Engine speed for this configuration (per-neuron selector, k=1024, no rescore, + head + prefetch): 2.56× at 1 thread
+  (Phase 14b/16 sweep). Needs KL ≲ 0.05 to be shippable; at the observed slope that is ≫ 4M tokens — the 100M pilot's question.
+- GPU spend for Phase 17 probes: ≈ $1.9.

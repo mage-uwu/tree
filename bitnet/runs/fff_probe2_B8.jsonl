@@ -1,0 +1,54 @@
+{"phase": 17, "event": "quantized BitLinears once", "n": 210, "layers": 30, "leaves": 864, "t": "16:41:03", "s": 2.8, "rss_gb": 1.09, "gpu_gb": 4.72}
+{"phase": 17, "event": "layer init", "layer": 0, "router_ce": 4.5388, "coverage_c": 0.8429, "recall_k_start": 0.8319, "t": "16:41:29", "s": 28.2, "rss_gb": 2.67, "gpu_gb": 27.7}
+{"phase": 17, "event": "layer init", "layer": 1, "router_ce": 3.6623, "coverage_c": 0.8919, "recall_k_start": 0.9457, "t": "16:41:35", "s": 34.2, "rss_gb": 2.67, "gpu_gb": 27.91}
+{"phase": 17, "event": "layer init", "layer": 2, "router_ce": 3.8956, "coverage_c": 0.7083, "recall_k_start": 0.9292, "t": "16:41:41", "s": 40.6, "rss_gb": 2.67, "gpu_gb": 28.11}
+{"phase": 17, "event": "layer init", "layer": 3, "router_ce": 4.201, "coverage_c": 0.7952, "recall_k_start": 0.8986, "t": "16:41:48", "s": 47.4, "rss_gb": 2.67, "gpu_gb": 28.32}
+{"phase": 17, "event": "layer init", "layer": 4, "router_ce": 4.2454, "coverage_c": 0.7549, "recall_k_start": 0.8926, "t": "16:41:55", "s": 54.4, "rss_gb": 2.67, "gpu_gb": 28.52}
+{"phase": 17, "event": "layer init", "layer": 5, "router_ce": 4.7723, "coverage_c": 0.627, "recall_k_start": 0.8767, "t": "16:42:02", "s": 61.9, "rss_gb": 2.67, "gpu_gb": 28.72}
+{"phase": 17, "event": "layer init", "layer": 6, "router_ce": 4.6151, "coverage_c": 0.7085, "recall_k_start": 0.8895, "t": "16:42:09", "s": 68.9, "rss_gb": 2.67, "gpu_gb": 28.93}
+{"phase": 17, "event": "layer init", "layer": 7, "router_ce": 4.5773, "coverage_c": 0.7694, "recall_k_start": 0.8826, "t": "16:42:16", "s": 76.0, "rss_gb": 2.67, "gpu_gb": 29.14}
+{"phase": 17, "event": "layer init", "layer": 8, "router_ce": 4.835, "coverage_c": 0.6604, "recall_k_start": 0.8585, "t": "16:42:23", "s": 83.0, "rss_gb": 2.67, "gpu_gb": 29.34}
+{"phase": 17, "event": "layer init", "layer": 9, "router_ce": 5.1668, "coverage_c": 0.6358, "recall_k_start": 0.8243, "t": "16:42:31", "s": 90.5, "rss_gb": 2.67, "gpu_gb": 29.54}
+{"phase": 17, "event": "layer init", "layer": 10, "router_ce": 5.2063, "coverage_c": 0.7754, "recall_k_start": 0.8142, "t": "16:42:38", "s": 97.6, "rss_gb": 2.67, "gpu_gb": 29.75}
+{"phase": 17, "event": "layer init", "layer": 11, "router_ce": 5.3856, "coverage_c": 0.7687, "recall_k_start": 0.7928, "t": "16:42:45", "s": 104.6, "rss_gb": 2.67, "gpu_gb": 29.95}
+{"phase": 17, "event": "layer init", "layer": 12, "router_ce": 5.3097, "coverage_c": 0.8233, "recall_k_start": 0.7948, "t": "16:42:52", "s": 111.7, "rss_gb": 2.67, "gpu_gb": 30.16}
+{"phase": 17, "event": "layer init", "layer": 13, "router_ce": 5.4283, "coverage_c": 0.7796, "recall_k_start": 0.7809, "t": "16:42:59", "s": 118.7, "rss_gb": 2.67, "gpu_gb": 30.36}
+{"phase": 17, "event": "layer init", "layer": 14, "router_ce": 5.3169, "coverage_c": 0.8148, "recall_k_start": 0.7886, "t": "16:43:06", "s": 125.8, "rss_gb": 2.67, "gpu_gb": 30.57}
+{"phase": 17, "event": "layer init", "layer": 15, "router_ce": 4.9757, "coverage_c": 0.8519, "recall_k_start": 0.8118, "t": "16:43:13", "s": 133.1, "rss_gb": 2.67, "gpu_gb": 30.77}
+{"phase": 17, "event": "layer init", "layer": 16, "router_ce": 5.0673, "coverage_c": 0.8418, "recall_k_start": 0.8201, "t": "16:43:21", "s": 140.2, "rss_gb": 2.67, "gpu_gb": 30.98}
+{"phase": 17, "event": "layer init", "layer": 17, "router_ce": 4.8247, "coverage_c": 0.8175, "recall_k_start": 0.8473, "t": "16:43:28", "s": 147.2, "rss_gb": 2.67, "gpu_gb": 31.18}
+{"phase": 17, "event": "layer init", "layer": 18, "router_ce": 4.4344, "coverage_c": 0.8238, "recall_k_start": 0.871, "t": "16:43:35", "s": 154.2, "rss_gb": 2.67, "gpu_gb": 31.39}
+{"phase": 17, "event": "layer init", "layer": 19, "router_ce": 4.5783, "coverage_c": 0.8713, "recall_k_start": 0.8731, "t": "16:43:42", "s": 161.8, "rss_gb": 2.67, "gpu_gb": 31.59}
+{"phase": 17, "event": "layer init", "layer": 20, "router_ce": 4.3367, "coverage_c": 0.8784, "recall_k_start": 0.8826, "t": "16:43:49", "s": 169.0, "rss_gb": 2.67, "gpu_gb": 31.8}
+{"phase": 17, "event": "layer init", "layer": 21, "router_ce": 4.4198, "coverage_c": 0.882, "recall_k_start": 0.8846, "t": "16:43:57", "s": 176.4, "rss_gb": 2.67, "gpu_gb": 32.0}
+{"phase": 17, "event": "layer init", "layer": 22, "router_ce": 4.5012, "coverage_c": 0.852, "recall_k_start": 0.8877, "t": "16:44:04", "s": 183.5, "rss_gb": 2.67, "gpu_gb": 32.2}
+{"phase": 17, "event": "layer init", "layer": 23, "router_ce": 4.3003, "coverage_c": 0.8939, "recall_k_start": 0.9014, "t": "16:44:11", "s": 190.6, "rss_gb": 2.67, "gpu_gb": 32.41}
+{"phase": 17, "event": "layer init", "layer": 24, "router_ce": 4.2711, "coverage_c": 0.9042, "recall_k_start": 0.9056, "t": "16:44:18", "s": 197.8, "rss_gb": 2.67, "gpu_gb": 32.61}
+{"phase": 17, "event": "layer init", "layer": 25, "router_ce": 4.4107, "coverage_c": 0.8879, "recall_k_start": 0.8996, "t": "16:44:26", "s": 205.2, "rss_gb": 2.67, "gpu_gb": 32.82}
+{"phase": 17, "event": "layer init", "layer": 26, "router_ce": 4.3795, "coverage_c": 0.8583, "recall_k_start": 0.8986, "t": "16:44:33", "s": 212.4, "rss_gb": 2.67, "gpu_gb": 33.02}
+{"phase": 17, "event": "layer init", "layer": 27, "router_ce": 4.5924, "coverage_c": 0.8524, "recall_k_start": 0.888, "t": "16:44:40", "s": 219.6, "rss_gb": 2.67, "gpu_gb": 33.23}
+{"phase": 17, "event": "layer init", "layer": 28, "router_ce": 4.7105, "coverage_c": 0.8115, "recall_k_start": 0.8789, "t": "16:44:47", "s": 226.4, "rss_gb": 2.67, "gpu_gb": 33.44}
+{"phase": 17, "event": "layer init", "layer": 29, "router_ce": 4.7355, "coverage_c": 0.5595, "recall_k_start": 0.8795, "t": "16:44:54", "s": 233.6, "rss_gb": 2.67, "gpu_gb": 33.64}
+{"phase": 17, "event": "eval", "step": 0, "k": 1536, "tokens_seen": 0, "wiki_ppl": 20.9457, "wiki_kl": 0.50232, "wiki_top1": 0.6638, "chat_ppl": 10.9185, "chat_kl": 0.83378, "chat_top1": 0.6145, "t": "16:44:59", "s": 238.5, "rss_gb": 2.7, "gpu_gb": 33.64}
+{"phase": 17, "event": "start", "steps": 250, "tokens_per_step": 16384, "k": 1024, "k_start": 1536, "B_leaf": 8, "router": "flat", "t": "16:44:59", "s": 238.5, "rss_gb": 2.7, "gpu_gb": 33.64}
+{"phase": 17, "event": "debug fwd done", "t": "16:45:05", "s": 244.2, "rss_gb": 4.01, "gpu_gb": 53.23}
+{"phase": 17, "event": "debug bwd done", "t": "16:45:05", "s": 244.6, "rss_gb": 4.02, "gpu_gb": 53.23}
+{"phase": 17, "event": "debug fwd done", "t": "16:45:05", "s": 245.1, "rss_gb": 4.02, "gpu_gb": 59.18}
+{"phase": 17, "event": "debug bwd done", "t": "16:45:06", "s": 245.5, "rss_gb": 4.02, "gpu_gb": 59.18}
+{"phase": 17, "event": "debug fwd done", "t": "16:45:06", "s": 246.0, "rss_gb": 4.03, "gpu_gb": 59.18}
+{"phase": 17, "event": "debug bwd done", "t": "16:45:07", "s": 246.4, "rss_gb": 4.03, "gpu_gb": 59.18}
+{"phase": 17, "event": "debug fwd done", "t": "16:45:07", "s": 246.9, "rss_gb": 4.03, "gpu_gb": 59.18}
+{"phase": 17, "event": "debug bwd done", "t": "16:45:08", "s": 247.3, "rss_gb": 4.03, "gpu_gb": 59.18}
+{"phase": 17, "event": "train", "step": 10, "k": 1468, "train_kl": 0.79333, "router_ce": 5.6623, "tok_per_s": 3920.6, "tokens_seen": 163840, "t": "16:45:41", "s": 280.3, "rss_gb": 4.07, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 20, "k": 1399, "train_kl": 0.78052, "router_ce": 5.585, "tok_per_s": 4495.7, "tokens_seen": 327680, "t": "16:46:17", "s": 316.7, "rss_gb": 4.08, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 30, "k": 1331, "train_kl": 0.71144, "router_ce": 5.5143, "tok_per_s": 4494.7, "tokens_seen": 491520, "t": "16:46:54", "s": 353.1, "rss_gb": 4.1, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 40, "k": 1263, "train_kl": 0.74047, "router_ce": 5.4933, "tok_per_s": 4494.2, "tokens_seen": 655360, "t": "16:47:30", "s": 389.6, "rss_gb": 4.11, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 50, "k": 1195, "train_kl": 0.76604, "router_ce": 5.4856, "tok_per_s": 4495.2, "tokens_seen": 819200, "t": "16:48:06", "s": 426.1, "rss_gb": 4.12, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 60, "k": 1126, "train_kl": 0.82456, "router_ce": 5.4803, "tok_per_s": 4496.4, "tokens_seen": 983040, "t": "16:48:43", "s": 462.5, "rss_gb": 4.15, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 70, "k": 1058, "train_kl": 0.86927, "router_ce": 5.4695, "tok_per_s": 4494.1, "tokens_seen": 1146880, "t": "16:49:19", "s": 498.9, "rss_gb": 4.2, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 80, "k": 1024, "train_kl": 0.92514, "router_ce": 5.4745, "tok_per_s": 4504.7, "tokens_seen": 1310720, "t": "16:49:56", "s": 535.3, "rss_gb": 4.22, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 90, "k": 1024, "train_kl": 0.90249, "router_ce": 5.4575, "tok_per_s": 4509.6, "tokens_seen": 1474560, "t": "16:50:32", "s": 571.7, "rss_gb": 4.22, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 100, "k": 1024, "train_kl": 0.91428, "router_ce": 5.4793, "tok_per_s": 4511.5, "tokens_seen": 1638400, "t": "16:51:08", "s": 608.0, "rss_gb": 4.22, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 110, "k": 1024, "train_kl": 0.8516, "router_ce": 5.4226, "tok_per_s": 4511.1, "tokens_seen": 1802240, "t": "16:51:45", "s": 644.3, "rss_gb": 4.23, "gpu_gb": 71.25}
+{"phase": 17, "event": "train", "step": 120, "k": 1024, "train_kl": 0.84327, "router_ce": 5.4174, "tok_per_s": 4510.6, "tokens_seen": 1966080, "t": "16:52:21", "s": 680.6, "rss_gb": 4.25, "gpu_gb": 71.25}
+{"phase": 17, "event": "eval", "step": 125, "k": 1024, "tokens_seen": 2048000, "wiki_ppl": 29.0711, "wiki_kl": 0.78803, "wiki_top1": 0.5965, "chat_ppl": 11.6257, "chat_kl": 0.89745, "chat_top1": 0.6175, "t": "16:52:44", "s": 703.7, "rss_gb": 4.25, "gpu_gb": 71.25}

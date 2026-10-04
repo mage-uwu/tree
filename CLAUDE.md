@@ -43,6 +43,10 @@ The scale-up was done; full record in `bitnet/NOTEBOOK.md` (summary table at the
   At 4 threads short ctx the floor is now per-op/thread-sync overhead (~2/3 of the 31 ms/token). Next: op fusion.
 - Phase 15 step 1: FFF tree router over BitNet neurons (single layer) is 1.46–2.0× the low-rank selector's error;
   leaf granularity at ~7 neurons is fine (oracle beats low-rank), routing is the gap, trees improve with data.
+- **Phase 17: FFF distillation fast path** (`bitnet/fff_distill.py`): quantize-once, dense masked FFF over permuted BitNet
+  neurons, joint router training, k annealing, running coverage, FineWeb-Edu streaming; 4.6k tok/s on an A100 (100M tokens
+  ≈ $8.5–11). 8-neuron contiguous leaves fail (KL 0.5 at init, 0.79 after 2M tokens); per-neuron selection, jointly trained,
+  k=1024 no rescore: KL 0.169 wiki / 0.145 chat after 4.1M tokens, still falling. Next: 100M-token pilot of the per-neuron arm.
 - Next (other): AVX-512 fast-scan and int8 leaves; per-layer tau; sparse-MLP memory layout.
 
 # Tree-BitNet handoff
