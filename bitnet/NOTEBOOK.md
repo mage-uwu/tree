@@ -883,3 +883,8 @@ VNNI under -march=native), not `ggml_vec_dot_i2_i8_s` (patched too, unused in de
 - 4 threads, short context: prefetched stock is at ~31 ms/token, but streaming its weights at 52 GB/s takes ~10 ms. The rest
   is per-op/thread-sync overhead + attention + output layer, so the tree ops (more, smaller ops) no longer gain there.
   Next floor: op fusion / fewer barriers per layer. Gathered-row prefetch distance in our own ops (`TREE_MLP_PF`) is flat 4–32.
+
+**Phase 16 vetting** (short prompt, 1 thread, 256 tokens, 3 interleaved repeats, mean tok/s): stock 6.44 · stock + prefetch
+9.78 (1.52×) · head + sparse MLP (HF codes), no prefetch 11.07 (1.72×) · same + prefetch **16.07 (2.50×)**. The two gains
+multiply (1.52 × 1.72 = 2.61 predicted). Tree stack over *prefetched* stock: 1.64×. Quality of that config (8×2048 wiki):
+ppl 11.05 vs stock 11.28 (−2.1%, from the HF codes); vs its own HF-codes base +1.2% ppl, KL 0.017, top-1 97.6%.
